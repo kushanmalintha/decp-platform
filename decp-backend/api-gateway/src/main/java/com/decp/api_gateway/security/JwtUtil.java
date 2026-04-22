@@ -14,10 +14,31 @@ public class JwtUtil {
     private final String SECRET = dotenv.get("JWT_SECRET");
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
 
-    public void validateToken(String token) {
-        Jwts.parserBuilder()
+    // public void validateToken(String token) {
+    //     Jwts.parserBuilder()
+    //             .setSigningKey(key)
+    //             .build()
+    //             .parseClaimsJws(token);
+    // }
+
+    public String extractEmail(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (JwtException e) {
+            return false;
+        }
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
-                .parseClaimsJws(token);
+                .parseClaimsJws(token)
+                .getBody();
     }
 }

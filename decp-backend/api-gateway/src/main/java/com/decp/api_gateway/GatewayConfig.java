@@ -14,6 +14,11 @@ public class GatewayConfig {
                 .route("auth-service", r -> r
                         .path("/auth/**")
                         .uri("http://localhost:8081"))
+
+                .route("user-service", r -> r
+                        .path("/users/**")
+                        .uri("http://localhost:8082"))
+
                 .build();
     }
 }

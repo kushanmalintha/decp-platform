@@ -35,6 +35,12 @@ public class AuthenticationFilter implements GlobalFilter {
 
         jwtUtil.validateToken(token);
 
+        String email = jwtUtil.extractEmail(token);
+
+        exchange = exchange.mutate()
+                .request(r -> r.header("X-User-Email", email))
+                .build();
+
         return chain.filter(exchange);
     }
 }
