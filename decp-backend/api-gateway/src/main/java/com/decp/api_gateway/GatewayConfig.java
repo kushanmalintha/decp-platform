@@ -19,6 +19,10 @@ public class GatewayConfig {
                         .path("/users/**")
                         .uri("http://localhost:8082"))
 
+                .route("feed-service", r -> r
+                        .path("/feed/**")
+                        .uri("http://localhost:8083"))
+
                 .build();
     }
 }
