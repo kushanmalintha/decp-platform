@@ -23,6 +23,10 @@ public class GatewayConfig {
                         .path("/feed/**")
                         .uri("http://localhost:8083"))
 
+                .route("job-service", r -> r
+                .path("/jobs/**")
+                .uri("http://localhost:8084"))
+
                 .build();
     }
 }
