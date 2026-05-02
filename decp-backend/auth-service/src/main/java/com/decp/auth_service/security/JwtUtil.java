@@ -25,24 +25,28 @@ public class JwtUtil {
                 .compact();
     }
 
-    // public String extractEmail(String token) {
-    //     return getClaims(token).getSubject();
-    // }
+    public String extractEmail(String token) {
+        return getClaims(token).getSubject();
+    }
 
-    // public boolean validateToken(String token) {
-    //     try {
-    //         getClaims(token);
-    //         return true;
-    //     } catch (JwtException e) {
-    //         return false;
-    //     }
-    // }
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
 
-    // private Claims getClaims(String token) {
-    //     return Jwts.parserBuilder()
-    //             .setSigningKey(key)
-    //             .build()
-    //             .parseClaimsJws(token)
-    //             .getBody();
-    // }
+    public boolean validateToken(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (JwtException e) {
+            return false;
+        }
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
 }

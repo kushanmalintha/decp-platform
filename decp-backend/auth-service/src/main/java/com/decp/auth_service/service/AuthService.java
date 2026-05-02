@@ -15,6 +15,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private static final String[] ALLOWED_ROLES = {"STUDENT", "ALUMNI", "ADMIN"};
 
     public void register(RegisterRequest request) {
         User user = User.builder()
@@ -37,5 +38,45 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 
         return new AuthResponse(token);
+    }
+
+    public RoleAssignmentResponse assignRole(String requesterEmail, String targetEmail, String newRole) {
+        // Validate the new role
+        if (!isValidRole(newRole)) {
+            throw new IllegalArgumentException("Invalid role: " + newRole + ". Allowed roles: STUDENT, ALUMNI, ADMIN");
+        }
+
+        // Prevent assigning ADMIN role if requester is not ADMIN
+        if ("ADMIN".equals(newRole)) {
+            throw new IllegalArgumentException("Only existing ADMIN users can assign ADMIN role");
+        }
+
+        // Prevent changing own role
+        if (requesterEmail.equals(targetEmail)) {
+            throw new IllegalArgumentException("You cannot change your own role");
+        }
+
+        // Find and update the target user
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + targetEmail));
+
+        targetUser.setRole(newRole);
+        User updatedUser = userRepository.save(targetUser);
+
+        return new RoleAssignmentResponse(
+                updatedUser.getId(),
+                updatedUser.getEmail(),
+                updatedUser.getRole(),
+                "Role updated successfully"
+        );
+    }
+
+    private boolean isValidRole(String role) {
+        for (String allowedRole : ALLOWED_ROLES) {
+            if (allowedRole.equals(role)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
