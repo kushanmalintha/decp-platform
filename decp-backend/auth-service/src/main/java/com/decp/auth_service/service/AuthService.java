@@ -1,5 +1,6 @@
 package com.decp.auth_service.service;
 
+import com.decp.auth_service.client.UserServiceClient;
 import com.decp.auth_service.dto.*;
 import com.decp.auth_service.entity.User;
 import com.decp.auth_service.repository.UserRepository;
@@ -15,16 +16,28 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final UserServiceClient userServiceClient;
     private static final String[] ALLOWED_ROLES = {"STUDENT", "ALUMNI", "ADMIN"};
 
     public void register(RegisterRequest request) {
+        String name = request.getName() != null ? request.getName() : request.getEmail();
+        
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .name(name)
                 .role("STUDENT")
                 .build();
 
         userRepository.save(user);
+
+        // Sync user to user-service
+        CreateUserRequest createUserRequest = new CreateUserRequest(
+                request.getEmail(),
+                name,
+                "STUDENT"
+        );
+        userServiceClient.createUser(createUserRequest);
     }
 
     public AuthResponse login(LoginRequest request) {

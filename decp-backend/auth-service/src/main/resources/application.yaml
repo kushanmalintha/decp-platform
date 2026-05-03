@@ -16,3 +16,6 @@ spring:
         format_sql: true
 server:
   port: 8081
+
+user-service:
+  url: http://localhost:8082

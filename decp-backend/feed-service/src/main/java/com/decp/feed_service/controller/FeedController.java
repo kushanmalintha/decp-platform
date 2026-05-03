@@ -1,7 +1,6 @@
 package com.decp.feed_service.controller;
 
 import com.decp.feed_service.dto.*;
-import com.decp.feed_service.entity.*;
 import com.decp.feed_service.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
