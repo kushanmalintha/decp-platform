@@ -5,15 +5,23 @@ import org.springframework.cloud.gateway.filter.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.*;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
 
 @Component
 @RequiredArgsConstructor
 public class AuthenticationFilter implements GlobalFilter {
 
     private final com.decp.api_gateway.security.JwtUtil jwtUtil;
+
+    // ===== ROLE CONSTANTS =====
+    private static final String ROLE_STUDENT = "STUDENT";
+    private static final String ROLE_ALUMNI = "ALUMNI";
+    private static final String ROLE_ADMIN = "ADMIN";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -32,33 +40,27 @@ public class AuthenticationFilter implements GlobalFilter {
 
         // Missing or invalid Authorization header
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return reject(exchange, HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
         }
 
         String token = authHeader.substring(7);
 
         // Invalid token
         if (!jwtUtil.validateToken(token)) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return reject(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
         }
 
         String email = jwtUtil.extractEmail(token);
         String role = jwtUtil.extractRole(token);
 
-        // Missing role in token
-        if (role == null || role.isEmpty()) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+        // Defensive check: Missing or invalid role in token
+        if (isInvalidRole(role)) {
+            return reject(exchange, HttpStatus.UNAUTHORIZED, "Invalid or missing role in token");
         }
 
-        // ===== RBAC RULES =====
-
-        // Check if user is authorized for this endpoint
+        // ===== RBAC ENFORCEMENT =====
         if (!isAuthorized(path, method, role)) {
-            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
-            return exchange.getResponse().setComplete();
+            return reject(exchange, HttpStatus.FORBIDDEN, "Insufficient permissions for this resource");
         }
 
         // Add user information to request headers for downstream services
@@ -71,32 +73,115 @@ public class AuthenticationFilter implements GlobalFilter {
         return chain.filter(exchange);
     }
 
+    // ===== HELPER METHODS: ERROR RESPONSES =====
+
+    /**
+     * Standardized error response handler
+     * Returns JSON error response with appropriate HTTP status code
+     */
+    private Mono<Void> reject(ServerWebExchange exchange, HttpStatus status, String message) {
+        try {
+            // Build JSON response manually
+            String jsonResponse = String.format(
+                    "{\"error\":\"%s\",\"status\":%d}",
+                    message, status.value()
+            );
+            byte[] responseBytes = jsonResponse.getBytes(StandardCharsets.UTF_8);
+
+            exchange.getResponse().setStatusCode(status);
+            exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+            exchange.getResponse().getHeaders().setContentLength(responseBytes.length);
+
+            return exchange.getResponse().writeWith(
+                    Mono.just(exchange.getResponse()
+                            .bufferFactory()
+                            .wrap(responseBytes))
+            );
+        } catch (Exception e) {
+            exchange.getResponse().setStatusCode(status);
+            return exchange.getResponse().setComplete();
+        }
+    }
+
+    /**
+     * Validates that role is not null, empty, or contains invalid characters
+     */
+    private boolean isInvalidRole(String role) {
+        return role == null || role.trim().isEmpty();
+    }
+
+    // ===== HELPER METHODS: PATH MATCHING =====
+
+    /**
+     * Matches: POST /jobs
+     */
+    private boolean isJobCreate(String path, HttpMethod method) {
+        return method == HttpMethod.POST && path.equals("/jobs");
+    }
+
+    /**
+     * Matches: POST /jobs/{id}/apply
+     */
+    private boolean isJobApply(String path, HttpMethod method) {
+        return method == HttpMethod.POST && path.contains("/apply") && path.startsWith("/jobs/");
+    }
+
+    /**
+     * Matches: POST /feed/posts
+     */
+    private boolean isFeedPostCreate(String path, HttpMethod method) {
+        return method == HttpMethod.POST && path.equals("/feed/posts");
+    }
+
+    /**
+     * Matches: GET /users/me or PUT /users/me
+     */
+    private boolean isMyProfile(String path, HttpMethod method) {
+        return path.equals("/users/me") && (method == HttpMethod.GET || method == HttpMethod.PUT);
+    }
+
+    /**
+     * Matches: GET /users/{id} where {id} is numeric or alphanumeric
+     */
+    private boolean isUserGetById(String path, HttpMethod method) {
+        return method == HttpMethod.GET && path.matches("^/users/[^/]+$") && !path.equals("/users/me");
+    }
+
+    // ===== RBAC ENFORCEMENT =====
+
     /**
      * RBAC Authorization Logic
      * 
      * Rules:
      * - Job Service:
-     *   - POST /jobs → ALUMNI, ADMIN
-     *   - POST /jobs/{id}/apply → STUDENT
+     *   - POST /jobs → ALUMNI, ADMIN only
+     *   - POST /jobs/{id}/apply → STUDENT only
+     *   - Other methods → all authenticated users
+     * 
      * - Feed Service:
-     *   - POST /feed/posts → STUDENT, ALUMNI
-     *   - GET /feed/** → all authenticated
+     *   - POST /feed/posts → STUDENT, ALUMNI only
+     *   - GET /feed/** → all authenticated users
+     *   - Other methods → all authenticated users
+     * 
      * - User Service:
-     *   - GET /users/me → all authenticated
-     *   - PUT /users/me → all authenticated
+     *   - GET /users/me → all authenticated users
+     *   - PUT /users/me → all authenticated users
      *   - GET /users/{id} → ADMIN only
+     *   - Other methods → all authenticated users
+     * 
+     * - Default: allow access for all authenticated users
      */
     private boolean isAuthorized(String path, HttpMethod method, String role) {
 
         // ===== JOB SERVICE =====
         if (path.startsWith("/jobs")) {
-            if (method == HttpMethod.POST && path.equals("/jobs")) {
+            if (isJobCreate(path, method)) {
                 // POST /jobs → ALUMNI, ADMIN
-                return role.equals("ALUMNI") || role.equals("ADMIN");
+                return hasRole(role, ROLE_ALUMNI, ROLE_ADMIN);
             }
-            if (method == HttpMethod.POST && path.contains("/apply")) {
+            if (isJobApply(path, method)) {
                 // POST /jobs/{id}/apply → STUDENT
-                return role.equals("STUDENT");
+                return hasRole(role, ROLE_STUDENT);
             }
             // Other job service endpoints allowed for authenticated users
             return true;
@@ -104,9 +189,9 @@ public class AuthenticationFilter implements GlobalFilter {
 
         // ===== FEED SERVICE =====
         if (path.startsWith("/feed")) {
-            if (method == HttpMethod.POST && path.equals("/feed/posts")) {
+            if (isFeedPostCreate(path, method)) {
                 // POST /feed/posts → STUDENT, ALUMNI
-                return role.equals("STUDENT") || role.equals("ALUMNI");
+                return hasRole(role, ROLE_STUDENT, ROLE_ALUMNI);
             }
             if (method == HttpMethod.GET) {
                 // GET /feed/** → all authenticated users
@@ -118,22 +203,32 @@ public class AuthenticationFilter implements GlobalFilter {
 
         // ===== USER SERVICE =====
         if (path.startsWith("/users")) {
-            if (path.equals("/users/me")) {
+            if (isMyProfile(path, method)) {
                 // GET /users/me → all authenticated users
                 // PUT /users/me → all authenticated users
-                if (method == HttpMethod.GET || method == HttpMethod.PUT) {
-                    return true;
-                }
+                return true;
             }
-            if (method == HttpMethod.GET && path.matches("^/users/[^/]+$")) {
+            if (isUserGetById(path, method)) {
                 // GET /users/{id} → ADMIN only
-                return role.equals("ADMIN");
+                return hasRole(role, ROLE_ADMIN);
             }
             // Other user service endpoints allowed for authenticated users
             return true;
         }
 
-        // Default: allow access for authenticated users
+        // Default: allow access for all authenticated users
         return true;
+    }
+
+    /**
+     * Utility method to check if user role matches any of the allowed roles
+     */
+    private boolean hasRole(String userRole, String... allowedRoles) {
+        for (String allowed : allowedRoles) {
+            if (userRole.equals(allowed)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
