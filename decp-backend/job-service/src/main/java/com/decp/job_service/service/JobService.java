@@ -4,7 +4,9 @@ import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.entity.*;
+import com.decp.job_service.event.JobCreatedEvent;
 import com.decp.job_service.exception.EntityNotFoundException;
+import com.decp.job_service.kafka.JobEventProducer;
 import com.decp.job_service.mapper.JobMapper;
 import com.decp.job_service.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class JobService {
     private final JobRepository jobRepository;
     private final JobApplicationRepository applicationRepository;
     private final JobMapper jobMapper;
+    private final JobEventProducer jobEventProducer;
 
     public JobResponse createJob(String email, CreateJobRequest request) {
         Job job = Job.builder()
@@ -33,6 +36,16 @@ public class JobService {
                 .build();
 
         Job savedJob = jobRepository.save(job);
+
+        // Publish event
+        JobCreatedEvent event = JobCreatedEvent.builder()
+                .jobId(savedJob.getId())
+                .title(savedJob.getTitle())
+                .postedBy(savedJob.getPostedByEmail())
+                .build();
+
+        jobEventProducer.sendJobCreatedEvent(event);
+
         return jobMapper.toJobResponse(savedJob);
     }
 

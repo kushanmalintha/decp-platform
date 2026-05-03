@@ -34,6 +34,17 @@ public class FeedService {
         return feedMapper.toPostResponse(savedPost);
     }
 
+    public void createPost(String email, String content) {
+        Post post = Post.builder()
+                .authorEmail(email)
+                .content(content)
+                .likes(0)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        postRepository.save(post);
+    }
+
     public Page<PostResponse> getAllPosts(Pageable pageable) {
         return postRepository.findAll(pageable)
                 .map(feedMapper::toPostResponse);

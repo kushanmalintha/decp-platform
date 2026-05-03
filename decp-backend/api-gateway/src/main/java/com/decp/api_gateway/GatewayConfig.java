@@ -24,8 +24,8 @@ public class GatewayConfig {
                         .uri("http://localhost:8083"))
 
                 .route("job-service", r -> r
-                .path("/jobs/**")
-                .uri("http://localhost:8084"))
+                        .path("/jobs/**")
+                        .uri("http://localhost:8084"))
 
                 .build();
     }
