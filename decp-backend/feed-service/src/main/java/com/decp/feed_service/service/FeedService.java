@@ -2,12 +2,17 @@ package com.decp.feed_service.service;
 
 import com.decp.feed_service.dto.*;
 import com.decp.feed_service.entity.*;
+import com.decp.feed_service.exception.EntityNotFoundException;
+import com.decp.feed_service.mapper.FeedMapper;
 import com.decp.feed_service.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -15,8 +20,9 @@ public class FeedService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final FeedMapper feedMapper;
 
-    public Post createPost(String email, CreatePostRequest request) {
+    public PostResponse createPost(String email, CreatePostRequest request) {
         Post post = Post.builder()
                 .authorEmail(email)
                 .content(request.getContent())
@@ -24,22 +30,30 @@ public class FeedService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+        return feedMapper.toPostResponse(savedPost);
     }
 
-    public List<Post> getAllPosts() {
-        return postRepository.findAll();
+    public Page<PostResponse> getAllPosts(Pageable pageable) {
+        return postRepository.findAll(pageable)
+                .map(feedMapper::toPostResponse);
     }
 
-    public Post likePost(Long postId) {
+    public PostResponse likePost(Long postId) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
 
         post.setLikes(post.getLikes() + 1);
-        return postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+        return feedMapper.toPostResponse(savedPost);
     }
 
-    public Comment addComment(Long postId, String email, CreateCommentRequest request) {
+    public CommentResponse addComment(Long postId, String email, CreateCommentRequest request) {
+        // Verify post exists
+        if (!postRepository.existsById(postId)) {
+            throw new EntityNotFoundException("Post not found with id: " + postId);
+        }
+
         Comment comment = Comment.builder()
                 .postId(postId)
                 .authorEmail(email)
@@ -47,10 +61,14 @@ public class FeedService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        return feedMapper.toCommentResponse(savedComment);
     }
 
-    public List<Comment> getComments(Long postId) {
-        return commentRepository.findByPostId(postId);
+    public List<CommentResponse> getComments(Long postId) {
+        return commentRepository.findByPostId(postId)
+                .stream()
+                .map(feedMapper::toCommentResponse)
+                .collect(Collectors.toList());
     }
 }

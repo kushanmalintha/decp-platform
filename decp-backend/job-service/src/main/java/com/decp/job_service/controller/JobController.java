@@ -1,9 +1,12 @@
 package com.decp.job_service.controller;
 
 import com.decp.job_service.dto.CreateJobRequest;
-import com.decp.job_service.entity.*;
+import com.decp.job_service.dto.JobApplicationResponse;
+import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,7 +19,7 @@ public class JobController {
     private final JobService jobService;
 
     @PostMapping
-    public Job createJob(
+    public JobResponse createJob(
             @RequestHeader("X-User-Email") String email,
             @RequestBody CreateJobRequest request) {
 
@@ -24,12 +27,12 @@ public class JobController {
     }
 
     @GetMapping
-    public List<Job> getAllJobs() {
-        return jobService.getAllJobs();
+    public Page<JobResponse> getAllJobs(Pageable pageable) {
+        return jobService.getAllJobs(pageable);
     }
 
     @PostMapping("/{id}/apply")
-    public JobApplication apply(
+    public JobApplicationResponse apply(
             @PathVariable Long id,
             @RequestHeader("X-User-Email") String email) {
 
@@ -37,7 +40,7 @@ public class JobController {
     }
 
     @GetMapping("/{id}/applications")
-    public List<JobApplication> getApplications(@PathVariable Long id) {
+    public List<JobApplicationResponse> getApplications(@PathVariable Long id) {
         return jobService.getApplications(id);
     }
 }
