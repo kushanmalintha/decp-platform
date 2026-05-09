@@ -33,6 +33,8 @@ public class Notification {
 
     private String message;
 
+    private String type;
+
     private String postedBy;
 
     private String recipientRole;
