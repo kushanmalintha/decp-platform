@@ -19,7 +19,7 @@ public class JobEventConsumer {
         log.info("Received job.created event: {}", event);
 
         try {
-            String content = "New job posted: " + event.getTitle();
+            String content = event.getTitle();
             feedService.createPost(event.getPostedBy(), content);
         } catch (Exception e) {
             log.error("Failed to process job.created event", e);

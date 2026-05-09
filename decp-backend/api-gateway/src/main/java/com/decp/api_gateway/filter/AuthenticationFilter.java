@@ -216,6 +216,12 @@ public class AuthenticationFilter implements GlobalFilter {
             return true;
         }
 
+        // ===== NOTIFICATION SERVICE =====
+        if (path.startsWith("/notifications")) {
+            // GET /notifications → STUDENT only
+            return hasRole(role, ROLE_STUDENT);
+        }
+
         // Default: allow access for all authenticated users
         return true;
     }

@@ -27,6 +27,10 @@ public class GatewayConfig {
                         .path("/jobs/**")
                         .uri("http://localhost:8084"))
 
+                .route("notification-service", r -> r
+                        .path("/notifications/**")
+                        .uri("http://localhost:8085"))
+
                 .build();
     }
 }
