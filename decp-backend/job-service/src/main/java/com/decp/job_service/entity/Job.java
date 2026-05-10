@@ -21,4 +21,11 @@ public class Job {
     private String postedByEmail;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

@@ -25,27 +25,33 @@ public class NotificationController {
 
     @GetMapping
     public Page<NotificationResponse> getNotifications(
+            @RequestHeader("X-User-Email") String email,
             @RequestHeader("X-User-Role") String role,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        return notificationService.getNotificationsForRole(role, pageable);
+        return notificationService.getNotifications(email, role, pageable);
     }
 
     @GetMapping("/unread")
-    public List<NotificationResponse> getUnreadNotifications(@RequestHeader("X-User-Role") String role) {
-        return notificationService.getUnreadNotificationsForRole(role);
+    public List<NotificationResponse> getUnreadNotifications(
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("X-User-Role") String role) {
+        return notificationService.getUnreadNotifications(email, role);
     }
 
     @PatchMapping("/{id}/read")
     public NotificationResponse markAsRead(
             @PathVariable Long id,
+            @RequestHeader("X-User-Email") String email,
             @RequestHeader("X-User-Role") String role) {
 
-        return notificationService.markAsRead(id, role);
+        return notificationService.markAsRead(id, email, role);
     }
 
     @PatchMapping("/read-all")
-    public List<NotificationResponse> markAllAsRead(@RequestHeader("X-User-Role") String role) {
-        return notificationService.markAllAsRead(role);
+    public List<NotificationResponse> markAllAsRead(
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("X-User-Role") String role) {
+        return notificationService.markAllAsRead(email, role);
     }
 }

@@ -37,6 +37,8 @@ public class Notification {
 
     private String postedBy;
 
+    private String recipientEmail;
+
     private String recipientRole;
 
     @Column(name = "is_read")

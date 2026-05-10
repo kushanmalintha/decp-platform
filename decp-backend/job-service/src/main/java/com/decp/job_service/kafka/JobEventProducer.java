@@ -1,5 +1,6 @@
 package com.decp.job_service.kafka;
 
+import com.decp.job_service.event.JobAppliedEvent;
 import com.decp.job_service.event.JobCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +12,15 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class JobEventProducer {
 
-    private final KafkaTemplate<String, JobCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void sendJobCreatedEvent(JobCreatedEvent event) {
         log.info("Sending job.created event: {}", event);
         kafkaTemplate.send("job.created", event);
+    }
+
+    public void sendJobAppliedEvent(JobAppliedEvent event) {
+        log.info("Sending job.applied event: {}", event);
+        kafkaTemplate.send("job.applied", event);
     }
 }

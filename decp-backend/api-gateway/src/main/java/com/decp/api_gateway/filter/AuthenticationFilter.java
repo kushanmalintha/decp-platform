@@ -51,7 +51,7 @@ public class AuthenticationFilter implements GlobalFilter {
         }
 
         String email = jwtUtil.extractEmail(token);
-        String role = jwtUtil.extractRole(token);
+        String role = normalizeRole(jwtUtil.extractRole(token));
 
         // Defensive check: Missing or invalid role in token
         if (isInvalidRole(role)) {
@@ -63,9 +63,14 @@ public class AuthenticationFilter implements GlobalFilter {
             return reject(exchange, HttpStatus.FORBIDDEN, "Insufficient permissions for this resource");
         }
 
-        // Add user information to request headers for downstream services
+        // Add trusted user information to request headers for downstream services.
+        // Remove client-supplied identity headers first so they cannot override the JWT.
         exchange = exchange.mutate()
                 .request(r -> r
+                        .headers(headers -> {
+                            headers.remove("X-User-Email");
+                            headers.remove("X-User-Role");
+                        })
                         .header("X-User-Email", email)
                         .header("X-User-Role", role))
                 .build();
@@ -110,6 +115,18 @@ public class AuthenticationFilter implements GlobalFilter {
         return role == null || role.trim().isEmpty();
     }
 
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return null;
+        }
+
+        String normalizedRole = role.trim().toUpperCase();
+        if (normalizedRole.startsWith("ROLE_")) {
+            return normalizedRole.substring("ROLE_".length());
+        }
+        return normalizedRole;
+    }
+
     // ===== HELPER METHODS: PATH MATCHING =====
 
     /**
@@ -123,7 +140,7 @@ public class AuthenticationFilter implements GlobalFilter {
      * Matches: POST /jobs/{id}/apply
      */
     private boolean isJobApply(String path, HttpMethod method) {
-        return method == HttpMethod.POST && path.contains("/apply") && path.startsWith("/jobs/");
+        return method == HttpMethod.POST && path.matches("^/jobs/[^/]+/apply$");
     }
 
     /**
@@ -218,8 +235,8 @@ public class AuthenticationFilter implements GlobalFilter {
 
         // ===== NOTIFICATION SERVICE =====
         if (path.startsWith("/notifications")) {
-            // GET /notifications → STUDENT only
-            return hasRole(role, ROLE_STUDENT);
+            // Notification service returns only notifications targeted to the authenticated user.
+            return hasRole(role, ROLE_STUDENT, ROLE_ALUMNI, ROLE_ADMIN);
         }
 
         // Default: allow access for all authenticated users
@@ -230,8 +247,9 @@ public class AuthenticationFilter implements GlobalFilter {
      * Utility method to check if user role matches any of the allowed roles
      */
     private boolean hasRole(String userRole, String... allowedRoles) {
+        String normalizedUserRole = normalizeRole(userRole);
         for (String allowed : allowedRoles) {
-            if (userRole.equals(allowed)) {
+            if (allowed.equals(normalizedUserRole)) {
                 return true;
             }
         }

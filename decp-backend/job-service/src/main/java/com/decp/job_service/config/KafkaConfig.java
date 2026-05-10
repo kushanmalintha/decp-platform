@@ -1,6 +1,5 @@
 package com.decp.job_service.config;
 
-import com.decp.job_service.event.JobCreatedEvent;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -40,7 +39,15 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ProducerFactory<String, JobCreatedEvent> producerFactory() {
+    public NewTopic jobAppliedTopic() {
+        return TopicBuilder.name("job.applied")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -50,7 +57,7 @@ public class KafkaConfig {
     }
 
     @Bean
-    public KafkaTemplate<String, JobCreatedEvent> kafkaTemplate() {
+    public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 }

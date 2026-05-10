@@ -15,4 +15,5 @@ public class JobApplicationResponse {
     private Long jobId;
     private String applicantEmail;
     private LocalDateTime appliedAt;
+    private String status;
 }

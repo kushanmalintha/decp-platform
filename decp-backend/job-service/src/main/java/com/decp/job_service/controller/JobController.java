@@ -34,9 +34,10 @@ public class JobController {
     @PostMapping("/{id}/apply")
     public JobApplicationResponse apply(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email) {
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
 
-        return jobService.apply(id, email);
+        return jobService.applyForJob(id, email, role);
     }
 
     @GetMapping("/{id}/applications")
