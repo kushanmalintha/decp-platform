@@ -15,9 +15,10 @@ public class JobApplicationMapper {
         return JobApplicationResponse.builder()
                 .id(jobApplication.getId())
                 .jobId(jobApplication.getJobId())
-                .applicantEmail(jobApplication.getApplicantEmail())
+                .studentEmail(jobApplication.getStudentEmail())
+                .applicantEmail(jobApplication.getStudentEmail())
                 .appliedAt(jobApplication.getAppliedAt())
-                .status(jobApplication.getStatus())
+                .status(jobApplication.getStatus() == null ? null : jobApplication.getStatus().name())
                 .build();
     }
 }

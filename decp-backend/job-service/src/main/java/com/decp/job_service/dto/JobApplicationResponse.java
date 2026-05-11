@@ -13,6 +13,7 @@ public class JobApplicationResponse {
 
     private Long id;
     private Long jobId;
+    private String studentEmail;
     private String applicantEmail;
     private LocalDateTime appliedAt;
     private String status;

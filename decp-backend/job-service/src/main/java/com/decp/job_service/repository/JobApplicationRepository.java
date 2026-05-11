@@ -7,7 +7,11 @@ import java.util.List;
 
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
 
-    boolean existsByJobIdAndApplicantEmail(Long jobId, String applicantEmail);
+    boolean existsByJobIdAndStudentEmail(Long jobId, String studentEmail);
 
     List<JobApplication> findByJobId(Long jobId);
+
+    List<JobApplication> findByStudentEmailOrderByAppliedAtDesc(String studentEmail);
+
+    List<JobApplication> findByStudentEmail(String studentEmail);
 }

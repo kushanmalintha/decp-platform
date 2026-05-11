@@ -3,6 +3,7 @@ package com.decp.job_service.controller;
 import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
+import com.decp.job_service.dto.UpdateApplicationStatusRequest;
 import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,13 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/jobs")
 @RequiredArgsConstructor
 public class JobController {
 
     private final JobService jobService;
 
-    @PostMapping
+    @PostMapping("/jobs")
     public JobResponse createJob(
             @RequestHeader("X-User-Email") String email,
             @RequestBody CreateJobRequest request) {
@@ -26,12 +26,12 @@ public class JobController {
         return jobService.createJob(email, request);
     }
 
-    @GetMapping
+    @GetMapping("/jobs")
     public Page<JobResponse> getAllJobs(Pageable pageable) {
         return jobService.getAllJobs(pageable);
     }
 
-    @PostMapping("/{id}/apply")
+    @PostMapping("/jobs/{id}/apply")
     public JobApplicationResponse apply(
             @PathVariable Long id,
             @RequestHeader("X-User-Email") String email,
@@ -40,8 +40,27 @@ public class JobController {
         return jobService.applyForJob(id, email, role);
     }
 
-    @GetMapping("/{id}/applications")
-    public List<JobApplicationResponse> getApplications(@PathVariable Long id) {
-        return jobService.getApplications(id);
+    @GetMapping("/jobs/{id}/applications")
+    public List<JobApplicationResponse> getApplications(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
+        return jobService.getApplicationsForJob(id, email, role);
+    }
+
+    @GetMapping("/jobs/applications/me")
+    public List<JobApplicationResponse> getMyApplications(
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
+        return jobService.getMyApplications(email, role);
+    }
+
+    @PatchMapping("/jobs/applications/{id}/status")
+    public JobApplicationResponse updateApplicationStatus(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestBody UpdateApplicationStatusRequest request) {
+        return jobService.updateApplicationStatus(id, email, role, request);
     }
 }

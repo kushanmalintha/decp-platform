@@ -47,6 +47,14 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic applicationStatusUpdatedTopic() {
+        return TopicBuilder.name("application.status.updated")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
