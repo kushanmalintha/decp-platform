@@ -4,6 +4,7 @@ import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
+import com.decp.job_service.security.JwtUtil;
 import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,13 +18,15 @@ import java.util.List;
 public class JobController {
 
     private final JobService jobService;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/jobs")
     public JobResponse createJob(
-            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody CreateJobRequest request) {
 
-        return jobService.createJob(email, request);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.createJob(user.email(), request);
     }
 
     @GetMapping("/jobs")
@@ -34,33 +37,33 @@ public class JobController {
     @PostMapping("/jobs/{id}/apply")
     public JobApplicationResponse apply(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader(value = "X-User-Role", required = false) String role) {
+            @RequestHeader("Authorization") String authHeader) {
 
-        return jobService.applyForJob(id, email, role);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.applyForJob(id, user.email(), user.role());
     }
 
     @GetMapping("/jobs/{id}/applications")
     public List<JobApplicationResponse> getApplications(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader(value = "X-User-Role", required = false) String role) {
-        return jobService.getApplicationsForJob(id, email, role);
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.getApplicationsForJob(id, user.email(), user.role());
     }
 
     @GetMapping("/jobs/applications/me")
     public List<JobApplicationResponse> getMyApplications(
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader(value = "X-User-Role", required = false) String role) {
-        return jobService.getMyApplications(email, role);
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.getMyApplications(user.email(), user.role());
     }
 
     @PatchMapping("/jobs/applications/{id}/status")
     public JobApplicationResponse updateApplicationStatus(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody UpdateApplicationStatusRequest request) {
-        return jobService.updateApplicationStatus(id, email, role, request);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.updateApplicationStatus(id, user.email(), user.role(), request);
     }
 }

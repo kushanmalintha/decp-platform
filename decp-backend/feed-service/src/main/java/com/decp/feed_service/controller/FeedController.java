@@ -1,6 +1,7 @@
 package com.decp.feed_service.controller;
 
 import com.decp.feed_service.dto.*;
+import com.decp.feed_service.security.JwtUtil;
 import com.decp.feed_service.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,13 +16,15 @@ import java.util.List;
 public class FeedController {
 
     private final FeedService feedService;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/posts")
     public PostResponse createPost(
-            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody CreatePostRequest request) {
 
-        return feedService.createPost(email, request);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return feedService.createPost(user.email(), request);
     }
 
     @GetMapping("/posts")
@@ -37,10 +40,11 @@ public class FeedController {
     @PostMapping("/posts/{id}/comments")
     public CommentResponse addComment(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody CreateCommentRequest request) {
 
-        return feedService.addComment(id, email, request);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return feedService.addComment(id, user.email(), request);
     }
 
     @GetMapping("/posts/{id}/comments")

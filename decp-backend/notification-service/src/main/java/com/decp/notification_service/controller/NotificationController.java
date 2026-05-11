@@ -1,6 +1,7 @@
 package com.decp.notification_service.controller;
 
 import com.decp.notification_service.dto.NotificationResponse;
+import com.decp.notification_service.security.JwtUtil;
 import com.decp.notification_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,36 +23,37 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final JwtUtil jwtUtil;
 
     @GetMapping
     public Page<NotificationResponse> getNotifications(
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader("X-User-Role") String role,
+            @RequestHeader("Authorization") String authHeader,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        return notificationService.getNotifications(email, role, pageable);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return notificationService.getNotifications(user.email(), user.role(), pageable);
     }
 
     @GetMapping("/unread")
     public List<NotificationResponse> getUnreadNotifications(
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader("X-User-Role") String role) {
-        return notificationService.getUnreadNotifications(email, role);
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return notificationService.getUnreadNotifications(user.email(), user.role());
     }
 
     @PatchMapping("/{id}/read")
     public NotificationResponse markAsRead(
             @PathVariable Long id,
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader("X-User-Role") String role) {
+            @RequestHeader("Authorization") String authHeader) {
 
-        return notificationService.markAsRead(id, email, role);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return notificationService.markAsRead(id, user.email(), user.role());
     }
 
     @PatchMapping("/read-all")
     public List<NotificationResponse> markAllAsRead(
-            @RequestHeader("X-User-Email") String email,
-            @RequestHeader("X-User-Role") String role) {
-        return notificationService.markAllAsRead(email, role);
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return notificationService.markAllAsRead(user.email(), user.role());
     }
 }

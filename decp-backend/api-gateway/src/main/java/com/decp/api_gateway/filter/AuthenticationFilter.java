@@ -50,7 +50,6 @@ public class AuthenticationFilter implements GlobalFilter {
             return reject(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
         }
 
-        String email = jwtUtil.extractEmail(token);
         String role = normalizeRole(jwtUtil.extractRole(token));
 
         // Defensive check: Missing or invalid role in token
@@ -62,18 +61,6 @@ public class AuthenticationFilter implements GlobalFilter {
         if (!isAuthorized(path, method, role)) {
             return reject(exchange, HttpStatus.FORBIDDEN, "Insufficient permissions for this resource");
         }
-
-        // Add trusted user information to request headers for downstream services.
-        // Remove client-supplied identity headers first so they cannot override the JWT.
-        exchange = exchange.mutate()
-                .request(r -> r
-                        .headers(headers -> {
-                            headers.remove("X-User-Email");
-                            headers.remove("X-User-Role");
-                        })
-                        .header("X-User-Email", email)
-                        .header("X-User-Role", role))
-                .build();
 
         return chain.filter(exchange);
     }

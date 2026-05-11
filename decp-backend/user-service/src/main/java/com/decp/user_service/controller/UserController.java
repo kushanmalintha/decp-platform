@@ -3,6 +3,7 @@ package com.decp.user_service.controller;
 import com.decp.user_service.dto.UpdateUserRequest;
 import com.decp.user_service.dto.CreateUserRequest;
 import com.decp.user_service.entity.UserProfile;
+import com.decp.user_service.security.JwtUtil;
 import com.decp.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/register")
     public ResponseEntity<UserProfile> createUser(@RequestBody CreateUserRequest request) {
@@ -24,15 +26,17 @@ public class UserController {
 
     @GetMapping("/me")
     public UserProfile getMyProfile(
-            @RequestHeader("X-User-Email") String email) {
-        return userService.getOrCreateUser(email);
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return userService.getOrCreateUser(user.email());
     }
 
     @PutMapping("/me")
     public UserProfile updateProfile(
-            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody UpdateUserRequest request) {
-        return userService.updateUser(email, request);
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return userService.updateUser(user.email(), request);
     }
 
     @GetMapping("/{id}")
