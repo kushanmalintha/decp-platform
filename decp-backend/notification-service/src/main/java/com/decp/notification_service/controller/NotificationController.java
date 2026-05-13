@@ -1,6 +1,7 @@
 package com.decp.notification_service.controller;
 
 import com.decp.notification_service.dto.NotificationResponse;
+import com.decp.notification_service.dto.UnreadNotificationCountResponse;
 import com.decp.notification_service.security.JwtUtil;
 import com.decp.notification_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,13 @@ public class NotificationController {
 
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
         return notificationService.getNotifications(user.email(), user.role(), pageable);
+    }
+
+    @GetMapping("/unread/count")
+    public UnreadNotificationCountResponse getUnreadCount(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return notificationService.getUnreadCount(user.email(), user.role());
     }
 
     @GetMapping("/unread")

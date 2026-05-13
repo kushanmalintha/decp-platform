@@ -61,10 +61,11 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `POST /feed/posts/{id}/like` | Any authenticated role |
 | `POST /feed/posts/{id}/comments` | Any authenticated role |
 | `GET /feed/posts/{id}/comments` | Any authenticated role |
-| `GET /notifications` | `STUDENT`, `ALUMNI`, or `ADMIN` |
-| `GET /notifications/unread` | `STUDENT`, `ALUMNI`, or `ADMIN` |
+| `GET /notifications` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
+| `GET /notifications/unread` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
+| `GET /notifications/unread/count` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
 | `PATCH /notifications/{id}/read` | Notification recipient email or recipient role only |
-| `PATCH /notifications/read-all` | `STUDENT`, `ALUMNI`, or `ADMIN` |
+| `PATCH /notifications/read-all` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
 
 ## Test Cases
 
@@ -1275,7 +1276,25 @@ Wait a few seconds after tests 18, 21, and 31 so notification-service can consum
 - Status: `200 OK`
 - JSON array contains unread notifications or an empty array
 
-### 43 - Mark One Notification As Read
+### 43 - Student Gets Unread Notification Count
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/notifications/unread/count`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has property `count`
+- `count` is a number
+- `count` is greater than or equal to `0`
+
+### 44 - Count Decreases After Mark One Notification As Read
+
+First call `GET {{baseUrl}}/notifications/unread/count` and save the current `count`.
+Use an unread notification ID visible to the student as `notificationId`.
 
 **Thunder Client Request**
 
@@ -1283,12 +1302,22 @@ Wait a few seconds after tests 18, 21, and 31 so notification-service can consum
 - URL: `{{baseUrl}}/notifications/{{notificationId}}/read`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
+**Then Call**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/notifications/unread/count`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
 **Expected**
 
-- Status: `200 OK`
-- JSON body `isRead` equals `true`
+- PATCH status: `200 OK`
+- PATCH response body `isRead` equals `true`
+- Count status: `200 OK`
+- JSON body has property `count`
+- `count` is reduced by `1` if the selected notification was unread and visible to the student
+- If exact numeric assertion is difficult in Thunder Client, manually compare the before and after count values
 
-### 44 - Mark All Notifications As Read
+### 45 - Count Becomes Zero After Mark All Notifications As Read
 
 **Thunder Client Request**
 
@@ -1301,7 +1330,45 @@ Wait a few seconds after tests 18, 21, and 31 so notification-service can consum
 - Status: `200 OK`
 - JSON array contains updated notifications or an empty array
 
-### 45 - Alumni Gets Notifications
+**Then Call**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/notifications/unread/count`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `count` equals `0` for that user if all visible notifications were marked read
+
+### 46 - Missing Authorization Is Rejected For Unread Count
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/notifications/unread/count`
+
+**Expected**
+
+- Status: `401 Unauthorized`
+- Follows existing auth error style
+
+### 47 - Alumni Gets Unread Notification Count
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/notifications/unread/count`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has property `count`
+- `count` is a number
+- `count` is greater than or equal to `0`
+
+### 48 - Alumni Gets Notifications
 
 **Thunder Client Request**
 
@@ -1315,7 +1382,7 @@ Wait a few seconds after tests 18, 21, and 31 so notification-service can consum
 - JSON body has `content`
 - Should include `JOB_APPLIED` notification for the job owner after test 21
 
-### 46 - Cannot Mark Another User Email Notification
+### 49 - Cannot Mark Another User Email Notification
 
 Use a notification ID targeted only to the alumni email, then call with the student token.
 
@@ -1330,7 +1397,7 @@ Use a notification ID targeted only to the alumni email, then call with the stud
 - Status: `403 Forbidden`
 - Body contains `Cannot update this notification`
 
-### 47 - Missing Notification Is Not Found
+### 50 - Missing Notification Is Not Found
 
 **Thunder Client Request**
 

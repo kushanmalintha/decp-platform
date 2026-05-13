@@ -39,4 +39,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findUnreadForRecipient(
             @Param("email") String email,
             @Param("role") String role);
+
+    @Query("""
+            select count(n) from Notification n
+            where n.read = false
+              and (n.recipientEmail = :email or n.recipientRole = :role)
+            """)
+    long countUnreadForRecipient(
+            @Param("email") String email,
+            @Param("role") String role);
 }

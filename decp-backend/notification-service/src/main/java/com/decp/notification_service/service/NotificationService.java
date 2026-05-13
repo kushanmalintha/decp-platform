@@ -1,6 +1,7 @@
 package com.decp.notification_service.service;
 
 import com.decp.notification_service.dto.NotificationResponse;
+import com.decp.notification_service.dto.UnreadNotificationCountResponse;
 import com.decp.notification_service.entity.Notification;
 import com.decp.notification_service.event.ApplicationStatusUpdatedEvent;
 import com.decp.notification_service.event.JobAppliedEvent;
@@ -25,6 +26,7 @@ public class NotificationService {
 
     private static final String ROLE_STUDENT = "STUDENT";
     private static final String ROLE_ALUMNI = "ALUMNI";
+    private static final String ROLE_RECRUITER = "RECRUITER";
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String TYPE_JOB_CREATED = "JOB_CREATED";
     private static final String TYPE_JOB_APPLIED = "JOB_APPLIED";
@@ -111,6 +113,18 @@ public class NotificationService {
                 .toList();
     }
 
+    public UnreadNotificationCountResponse getUnreadCount(String email, String role) {
+        validateAuthenticatedUser(email, role);
+
+        String normalizedRole = normalizeRole(role);
+        log.info("Unread notification count requested userEmail={} userRole={}", email, normalizedRole);
+
+        long count = notificationRepository.countUnreadForRecipient(email, normalizedRole);
+
+        log.info("Unread notification count returned userEmail={} userRole={} count={}", email, normalizedRole, count);
+        return new UnreadNotificationCountResponse(count);
+    }
+
     public NotificationResponse markAsRead(Long id, String email, String role) {
         validateAuthenticatedUser(email, role);
 
@@ -153,7 +167,10 @@ public class NotificationService {
     }
 
     private boolean isKnownRole(String role) {
-        return ROLE_STUDENT.equals(role) || ROLE_ALUMNI.equals(role) || ROLE_ADMIN.equals(role);
+        return ROLE_STUDENT.equals(role)
+                || ROLE_ALUMNI.equals(role)
+                || ROLE_RECRUITER.equals(role)
+                || ROLE_ADMIN.equals(role);
     }
 
     private String normalizeRole(String role) {
