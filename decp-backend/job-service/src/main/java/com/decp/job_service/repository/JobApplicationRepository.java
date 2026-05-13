@@ -1,5 +1,6 @@
 package com.decp.job_service.repository;
 
+import com.decp.job_service.entity.ApplicationStatus;
 import com.decp.job_service.entity.JobApplication;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,4 +15,8 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
     List<JobApplication> findByStudentEmailOrderByAppliedAtDesc(String studentEmail);
 
     List<JobApplication> findByStudentEmail(String studentEmail);
+
+    long countByJobIdIn(List<Long> jobIds);
+
+    long countByJobIdInAndStatus(List<Long> jobIds, ApplicationStatus status);
 }

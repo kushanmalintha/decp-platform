@@ -3,6 +3,7 @@ package com.decp.job_service.controller;
 import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
+import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
 import com.decp.job_service.entity.JobStatus;
 import com.decp.job_service.security.JwtUtil;
@@ -63,6 +64,13 @@ public class JobController {
             Pageable pageable) {
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
         return jobService.getSavedJobs(user.email(), user.role(), pageable);
+    }
+
+    @GetMapping("/jobs/recruiter/dashboard")
+    public ResponseEntity<RecruiterDashboardResponse> getRecruiterDashboard(
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(jobService.getRecruiterDashboard(user.email(), user.role()));
     }
 
     @PatchMapping("/jobs/{id}/close")

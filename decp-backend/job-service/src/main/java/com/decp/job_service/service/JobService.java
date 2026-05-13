@@ -3,6 +3,7 @@ package com.decp.job_service.service;
 import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
+import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
 import com.decp.job_service.entity.*;
 import com.decp.job_service.event.ApplicationStatusUpdatedEvent;
@@ -239,6 +240,55 @@ public class JobService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public RecruiterDashboardResponse getRecruiterDashboard(String requesterEmail, String requesterRole) {
+        String normalizedRole = normalizeRole(requesterRole);
+        log.info("Recruiter dashboard requested requesterEmail={} requesterRole={}", requesterEmail, normalizedRole);
+
+        validateDashboardRole(requesterEmail, normalizedRole);
+
+        long jobsPosted = jobRepository.countByPostedByEmail(requesterEmail);
+        long closedJobs = jobRepository.countByPostedByEmailAndStatus(requesterEmail, JobStatus.CLOSED);
+        long openJobs = jobsPosted - closedJobs;
+
+        List<Long> jobIds = jobRepository.findByPostedByEmail(requesterEmail)
+                .stream()
+                .map(Job::getId)
+                .toList();
+
+        long totalApplications = 0;
+        long applied = 0;
+        long reviewing = 0;
+        long shortlisted = 0;
+        long accepted = 0;
+        long rejected = 0;
+
+        if (!jobIds.isEmpty()) {
+            totalApplications = applicationRepository.countByJobIdIn(jobIds);
+            applied = applicationRepository.countByJobIdInAndStatus(jobIds, ApplicationStatus.APPLIED);
+            reviewing = applicationRepository.countByJobIdInAndStatus(jobIds, ApplicationStatus.REVIEWING);
+            shortlisted = applicationRepository.countByJobIdInAndStatus(jobIds, ApplicationStatus.SHORTLISTED);
+            accepted = applicationRepository.countByJobIdInAndStatus(jobIds, ApplicationStatus.ACCEPTED);
+            rejected = applicationRepository.countByJobIdInAndStatus(jobIds, ApplicationStatus.REJECTED);
+        }
+
+        RecruiterDashboardResponse response = RecruiterDashboardResponse.builder()
+                .jobsPosted(jobsPosted)
+                .openJobs(openJobs)
+                .closedJobs(closedJobs)
+                .totalApplications(totalApplications)
+                .applied(applied)
+                .reviewing(reviewing)
+                .shortlisted(shortlisted)
+                .accepted(accepted)
+                .rejected(rejected)
+                .build();
+
+        log.info("Recruiter dashboard generated requesterEmail={} jobsPosted={} totalApplications={}",
+                requesterEmail, response.getJobsPosted(), response.getTotalApplications());
+        return response;
+    }
+
     @Transactional
     public JobApplicationResponse updateApplicationStatus(
             Long applicationId,
@@ -300,6 +350,14 @@ public class JobService {
         String normalizedRole = normalizeRole(role);
         if (!ROLE_RECRUITER.equals(normalizedRole) && !ROLE_ALUMNI.equals(normalizedRole)) {
             throw new ForbiddenOperationException("Only recruiters can manage applications");
+        }
+    }
+
+    private void validateDashboardRole(String requesterEmail, String normalizedRole) {
+        if (!ROLE_RECRUITER.equals(normalizedRole) && !ROLE_ALUMNI.equals(normalizedRole)) {
+            log.warn("Forbidden recruiter dashboard access requesterEmail={} requesterRole={} reason=insufficient_role",
+                    requesterEmail, normalizedRole);
+            throw new ForbiddenOperationException("Only recruiters can access dashboard");
         }
     }
 

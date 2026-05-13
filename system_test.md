@@ -51,6 +51,7 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `POST /jobs` | `ALUMNI` or `ADMIN` through gateway |
 | `GET /jobs` | Any authenticated role |
 | `PATCH /jobs/{id}/close` | Gateway allows authenticated users; job service allows `ADMIN`, or owning `ALUMNI`/`RECRUITER` |
+| `GET /jobs/recruiter/dashboard` | Job service allows owning `ALUMNI` or `RECRUITER` only; `STUDENT` and `ADMIN` receive `403 Forbidden` |
 | `POST /jobs/{id}/apply` | `STUDENT` only through gateway and service |
 | `GET /jobs/{id}/applications` | Gateway allows any authenticated role, service allows owning `ALUMNI` or `RECRUITER` only |
 | `GET /jobs/applications/me` | Gateway allows any authenticated role, service allows `STUDENT` only |
@@ -1014,6 +1015,82 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 
 - Status: `200 OK`
 - JSON body `status` equals `ACCEPTED`
+
+### 31A - Alumni Gets Recruiter Dashboard
+
+Run this after the job creation, close-job, application, and application status tests so the dashboard has meaningful counts.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `jobsPosted`, `openJobs`, `closedJobs`, `totalApplications`, `applied`, `reviewing`, `shortlisted`, `accepted`, `rejected`
+- `jobsPosted` is at least `1`
+- `totalApplications` is at least `1`
+
+### 31B - Student Cannot Access Recruiter Dashboard
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body `message` contains `Only recruiters can access dashboard`
+
+### 31C - Admin Cannot Access Recruiter Dashboard
+
+Admin dashboard behavior is not supported in job-service; the endpoint is scoped to the authenticated recruiter's own jobs.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body `message` contains `Only recruiters can access dashboard`
+
+### 31D - Dashboard Counts Reflect Closed Jobs
+
+This uses the recruiter-owned job closed in test 20I.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `closedJobs` is at least `1`
+
+### 31E - Dashboard Counts Reflect Application Statuses
+
+This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` to `ACCEPTED` in tests 28, 30, and 31.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `accepted` is at least `1`
+- The moved application is counted only in its current stored status, so it contributes to `accepted`, not `applied`, `reviewing`, or `shortlisted`
 
 ### 32 - Create Feed Post As Student
 
