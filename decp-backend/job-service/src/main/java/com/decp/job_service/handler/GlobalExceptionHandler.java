@@ -6,6 +6,7 @@ import com.decp.job_service.exception.DuplicateJobApplicationException;
 import com.decp.job_service.exception.EntityNotFoundException;
 import com.decp.job_service.exception.ForbiddenOperationException;
 import com.decp.job_service.exception.InvalidApplicationStatusTransitionException;
+import com.decp.job_service.exception.InvalidJobOperationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -58,6 +59,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidApplicationStatusTransitionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidApplicationStatusTransitionException(
             InvalidApplicationStatusTransitionException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .message(ex.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidJobOperationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJobOperationException(InvalidJobOperationException ex) {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())

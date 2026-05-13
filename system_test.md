@@ -20,6 +20,8 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `adminToken` | set after login |
 | `studentUserId` | set from `GET /users/me` or admin lookup |
 | `jobId` | set from `POST /jobs` |
+| `closeTestJobId` | set from close-job workflow test job |
+| `adminCloseTestJobId` | optional, set from admin close-job workflow test |
 | `applicationId` | set from `POST /jobs/{id}/apply` |
 | `postId` | set from `POST /feed/posts` |
 | `notificationId` | set from `GET /notifications` or `GET /notifications/unread` |
@@ -48,6 +50,7 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `GET /users/{id}` | `ADMIN` only through gateway |
 | `POST /jobs` | `ALUMNI` or `ADMIN` through gateway |
 | `GET /jobs` | Any authenticated role |
+| `PATCH /jobs/{id}/close` | Gateway allows authenticated users; job service allows `ADMIN`, or owning `ALUMNI`/`RECRUITER` |
 | `POST /jobs/{id}/apply` | `STUDENT` only through gateway and service |
 | `GET /jobs/{id}/applications` | Gateway allows any authenticated role, service allows owning `ALUMNI` or `RECRUITER` only |
 | `GET /jobs/applications/me` | Gateway allows any authenticated role, service allows `STUDENT` only |
@@ -586,6 +589,141 @@ This endpoint exists in user-service and is normally called by auth-service duri
 - Status: `400 Bad Request`
 - JSON body `error` equals `Bad Request`
 - JSON body `message` contains `Invalid job status`
+
+### 20G - Alumni Creates Close-Test Job
+
+Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for the application workflow.
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "title": "Close Test Backend Role",
+  "description": "Used to test job closing workflow"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `status` equals `OPEN`
+- Save `id` as `closeTestJobId`
+
+### 20H - Student Cannot Close Job
+
+**Thunder Client Request**
+
+- Method: `PATCH`
+- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/close`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body `message` contains `Only admins, alumni, or recruiters can close jobs`
+
+### 20I - Owning Alumni Closes Job
+
+**Thunder Client Request**
+
+- Method: `PATCH`
+- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/close`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
+- JSON body `id` equals `{{closeTestJobId}}`
+- JSON body `status` equals `CLOSED`
+
+### 20J - Closed Job Appears In CLOSED Filter
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?status=CLOSED&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- `content` includes `closeTestJobId`
+- Returned close-test job has `status` equal to `CLOSED`
+
+### 20K - Closed Job Excluded From OPEN Filter
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?status=OPEN&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- `content` does not include `closeTestJobId`
+
+### 20L - Student Cannot Apply To Closed Job
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/apply`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `400 Bad Request`
+- JSON body `error` equals `Bad Request`
+- JSON body `message` contains `Applications are closed for this job`
+
+### 20M - Alumni Creates Admin Close-Test Job
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "title": "Admin Close Test Role",
+  "description": "Used to verify admin can close any job"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `status` equals `OPEN`
+- Save `id` as `adminCloseTestJobId`
+
+### 20N - Admin Can Close Any Job
+
+**Thunder Client Request**
+
+- Method: `PATCH`
+- URL: `{{baseUrl}}/jobs/{{adminCloseTestJobId}}/close`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `id` equals `{{adminCloseTestJobId}}`
+- JSON body `status` equals `CLOSED`
 
 ### 21 - Student Applies For Job
 

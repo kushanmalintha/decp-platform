@@ -12,6 +12,7 @@ import com.decp.job_service.exception.DuplicateJobApplicationException;
 import com.decp.job_service.exception.EntityNotFoundException;
 import com.decp.job_service.exception.ForbiddenOperationException;
 import com.decp.job_service.exception.InvalidApplicationStatusTransitionException;
+import com.decp.job_service.exception.InvalidJobOperationException;
 import com.decp.job_service.kafka.JobEventProducer;
 import com.decp.job_service.mapper.JobApplicationMapper;
 import com.decp.job_service.mapper.JobMapper;
@@ -37,6 +38,7 @@ public class JobService {
     private static final String ROLE_STUDENT = "STUDENT";
     private static final String ROLE_RECRUITER = "RECRUITER";
     private static final String ROLE_ALUMNI = "ALUMNI";
+    private static final String ROLE_ADMIN = "ADMIN";
 
     private static final Map<ApplicationStatus, EnumSet<ApplicationStatus>> ALLOWED_TRANSITIONS =
             new EnumMap<>(ApplicationStatus.class);
@@ -93,16 +95,47 @@ public class JobService {
                 .map(jobMapper::toJobResponse);
     }
 
-    public JobApplicationResponse applyForJob(Long jobId, String studentEmail) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new EntityNotFoundException("Job not found with id: " + jobId));
+    @Transactional
+    public JobResponse closeJob(Long jobId, String requesterEmail, String requesterRole) {
+        log.info("Job close requested jobId={} requesterEmail={} requesterRole={}",
+                jobId, requesterEmail, normalizeRole(requesterRole));
 
-        if (applicationRepository.existsByJobIdAndStudentEmail(jobId, studentEmail)) {
-            throw new DuplicateJobApplicationException("Student already applied for job with id: " + jobId);
+        Job job = findJob(jobId);
+        validateCanCloseJob(job, requesterEmail, requesterRole);
+
+        if (job.getStatus() == JobStatus.CLOSED) {
+            log.info("Job close requested for already closed job jobId={} requesterEmail={}", jobId, requesterEmail);
+            return jobMapper.toJobResponse(job);
+        }
+
+        job.setStatus(JobStatus.CLOSED);
+        Job savedJob = jobRepository.save(job);
+
+        log.info("Job closed successfully jobId={} requesterEmail={} postedByEmail={}",
+                savedJob.getId(), requesterEmail, savedJob.getPostedByEmail());
+        return jobMapper.toJobResponse(savedJob);
+    }
+
+    public JobApplicationResponse applyForJob(Long jobId, String studentEmail) {
+        Job job = findJob(jobId);
+        return createApplication(job, studentEmail);
+    }
+
+    public JobApplicationResponse applyForJob(Long jobId, String studentEmail, String role) {
+        Job job = findJob(jobId);
+        validateStudentRole(role);
+        return createApplication(job, studentEmail);
+    }
+
+    private JobApplicationResponse createApplication(Job job, String studentEmail) {
+        validateJobOpenForApplications(job, studentEmail);
+
+        if (applicationRepository.existsByJobIdAndStudentEmail(job.getId(), studentEmail)) {
+            throw new DuplicateJobApplicationException("Student already applied for job with id: " + job.getId());
         }
 
         JobApplication app = JobApplication.builder()
-                .jobId(jobId)
+                .jobId(job.getId())
                 .studentEmail(studentEmail)
                 .status(ApplicationStatus.APPLIED)
                 .build();
@@ -119,11 +152,6 @@ public class JobService {
         jobEventProducer.sendJobAppliedEvent(event);
 
         return jobApplicationMapper.toResponse(savedApp);
-    }
-
-    public JobApplicationResponse applyForJob(Long jobId, String studentEmail, String role) {
-        validateStudentRole(role);
-        return applyForJob(jobId, studentEmail);
     }
 
     public List<JobApplicationResponse> getApplicationsForJob(Long jobId, String recruiterEmail, String role) {
@@ -204,9 +232,37 @@ public class JobService {
         }
     }
 
+    private void validateCanCloseJob(Job job, String requesterEmail, String requesterRole) {
+        String normalizedRole = normalizeRole(requesterRole);
+
+        if (ROLE_ADMIN.equals(normalizedRole)) {
+            return;
+        }
+
+        if (!ROLE_RECRUITER.equals(normalizedRole) && !ROLE_ALUMNI.equals(normalizedRole)) {
+            log.warn("Unauthorized close attempt jobId={} requesterEmail={} requesterRole={} reason=insufficient_role",
+                    job.getId(), requesterEmail, normalizedRole);
+            throw new ForbiddenOperationException("Only admins, alumni, or recruiters can close jobs");
+        }
+
+        if (requesterEmail == null || !requesterEmail.equalsIgnoreCase(job.getPostedByEmail())) {
+            log.warn("Unauthorized close attempt jobId={} requesterEmail={} requesterRole={} postedByEmail={} reason=not_owner",
+                    job.getId(), requesterEmail, normalizedRole, job.getPostedByEmail());
+            throw new ForbiddenOperationException("Cannot close another user's job");
+        }
+    }
+
     private void validateJobOwnership(Job job, String recruiterEmail) {
         if (recruiterEmail == null || !recruiterEmail.equalsIgnoreCase(job.getPostedByEmail())) {
             throw new ForbiddenOperationException("Cannot manage applications for another recruiter's job");
+        }
+    }
+
+    private void validateJobOpenForApplications(Job job, String studentEmail) {
+        JobStatus status = job.getStatus() == null ? JobStatus.OPEN : job.getStatus();
+        if (status == JobStatus.CLOSED) {
+            log.info("Closed job application rejected jobId={} studentEmail={}", job.getId(), studentEmail);
+            throw new InvalidJobOperationException("Applications are closed for this job");
         }
     }
 

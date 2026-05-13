@@ -10,6 +10,7 @@ import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +38,14 @@ public class JobController {
             @RequestParam(required = false) String postedByEmail,
             Pageable pageable) {
         return jobService.getAllJobs(keyword, status, postedByEmail, pageable);
+    }
+
+    @PatchMapping("/jobs/{id}/close")
+    public ResponseEntity<JobResponse> closeJob(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(jobService.closeJob(id, user.email(), user.role()));
     }
 
     @PostMapping("/jobs/{id}/apply")
