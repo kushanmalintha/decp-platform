@@ -40,6 +40,31 @@ public class JobController {
         return jobService.getAllJobs(keyword, status, postedByEmail, pageable);
     }
 
+    @PostMapping("/jobs/{id}/save")
+    public ResponseEntity<JobResponse> saveJob(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(jobService.saveJob(id, user.email(), user.role()));
+    }
+
+    @DeleteMapping("/jobs/{id}/save")
+    public ResponseEntity<Void> unsaveJob(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        jobService.unsaveJob(id, user.email(), user.role());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/jobs/saved")
+    public Page<JobResponse> getSavedJobs(
+            @RequestHeader("Authorization") String authHeader,
+            Pageable pageable) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.getSavedJobs(user.email(), user.role(), pageable);
+    }
+
     @PatchMapping("/jobs/{id}/close")
     public ResponseEntity<JobResponse> closeJob(
             @PathVariable Long id,

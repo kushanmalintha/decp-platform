@@ -9,6 +9,7 @@ import com.decp.job_service.event.ApplicationStatusUpdatedEvent;
 import com.decp.job_service.event.JobAppliedEvent;
 import com.decp.job_service.event.JobCreatedEvent;
 import com.decp.job_service.exception.DuplicateJobApplicationException;
+import com.decp.job_service.exception.DuplicateSavedJobException;
 import com.decp.job_service.exception.EntityNotFoundException;
 import com.decp.job_service.exception.ForbiddenOperationException;
 import com.decp.job_service.exception.InvalidApplicationStatusTransitionException;
@@ -19,6 +20,7 @@ import com.decp.job_service.mapper.JobMapper;
 import com.decp.job_service.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,7 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final JobApplicationRepository applicationRepository;
+    private final SavedJobRepository savedJobRepository;
     private final JobMapper jobMapper;
     private final JobApplicationMapper jobApplicationMapper;
     private final JobEventProducer jobEventProducer;
@@ -93,6 +96,66 @@ public class JobService {
         log.info("Retrieving jobs keyword={} status={} postedByEmail={}", keyword, status, postedByEmail);
         return jobRepository.findAll(JobSpecifications.withFilters(keyword, status, postedByEmail), pageable)
                 .map(jobMapper::toJobResponse);
+    }
+
+    @Transactional
+    public JobResponse saveJob(Long jobId, String studentEmail, String role) {
+        log.info("Saved job requested jobId={} studentEmail={} requesterRole={}",
+                jobId, studentEmail, normalizeRole(role));
+
+        validateSavedJobStudentRole(role);
+        Job job = findJob(jobId);
+
+        if (savedJobRepository.existsByJobIdAndStudentEmail(jobId, studentEmail)) {
+            log.info("Duplicate saved job rejected jobId={} studentEmail={}", jobId, studentEmail);
+            throw new DuplicateSavedJobException("Job is already saved with id: " + jobId);
+        }
+
+        SavedJob savedJob = SavedJob.builder()
+                .jobId(job.getId())
+                .studentEmail(studentEmail)
+                .build();
+
+        try {
+            savedJobRepository.saveAndFlush(savedJob);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Duplicate saved job rejected by database jobId={} studentEmail={}", jobId, studentEmail);
+            throw new DuplicateSavedJobException("Job is already saved with id: " + jobId);
+        }
+
+        log.info("Job saved successfully jobId={} studentEmail={}", jobId, studentEmail);
+        return jobMapper.toJobResponse(job);
+    }
+
+    @Transactional
+    public void unsaveJob(Long jobId, String studentEmail, String role) {
+        log.info("Unsave job requested jobId={} studentEmail={} requesterRole={}",
+                jobId, studentEmail, normalizeRole(role));
+
+        validateSavedJobStudentRole(role);
+        findJob(jobId);
+
+        if (savedJobRepository.existsByJobIdAndStudentEmail(jobId, studentEmail)) {
+            savedJobRepository.deleteByJobIdAndStudentEmail(jobId, studentEmail);
+            log.info("Job unsaved successfully jobId={} studentEmail={}", jobId, studentEmail);
+            return;
+        }
+
+        log.info("Unsave job requested for unsaved job jobId={} studentEmail={}", jobId, studentEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getSavedJobs(String studentEmail, String role, Pageable pageable) {
+        validateSavedJobStudentRole(role);
+
+        log.info("Retrieving saved jobs studentEmail={} page={} size={}",
+                studentEmail, pageable.getPageNumber(), pageable.getPageSize());
+        Page<JobResponse> savedJobs = savedJobRepository.findByStudentEmailOrderBySavedAtDesc(studentEmail, pageable)
+                .map(savedJob -> jobMapper.toJobResponse(findJob(savedJob.getJobId())));
+
+        log.info("Saved jobs retrieved studentEmail={} count={} total={}",
+                studentEmail, savedJobs.getNumberOfElements(), savedJobs.getTotalElements());
+        return savedJobs;
     }
 
     @Transactional
@@ -220,8 +283,16 @@ public class JobService {
     }
 
     private void validateStudentRole(String role) {
-        if (role == null || !ROLE_STUDENT.equals(role.trim().toUpperCase())) {
-            throw new ForbiddenOperationException("Only students can apply for jobs");
+        validateStudentRole(role, "Only students can apply for jobs");
+    }
+
+    private void validateSavedJobStudentRole(String role) {
+        validateStudentRole(role, "Only students can use saved jobs");
+    }
+
+    private void validateStudentRole(String role, String message) {
+        if (!ROLE_STUDENT.equals(normalizeRole(role))) {
+            throw new ForbiddenOperationException(message);
         }
     }
 

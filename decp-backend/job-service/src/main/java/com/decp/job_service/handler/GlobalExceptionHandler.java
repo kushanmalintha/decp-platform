@@ -3,6 +3,7 @@ package com.decp.job_service.handler;
 import com.decp.job_service.dto.ErrorResponse;
 import com.decp.job_service.entity.JobStatus;
 import com.decp.job_service.exception.DuplicateJobApplicationException;
+import com.decp.job_service.exception.DuplicateSavedJobException;
 import com.decp.job_service.exception.EntityNotFoundException;
 import com.decp.job_service.exception.ForbiddenOperationException;
 import com.decp.job_service.exception.InvalidApplicationStatusTransitionException;
@@ -34,6 +35,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DuplicateJobApplicationException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateJobApplicationException(DuplicateJobApplicationException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .message(ex.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(DuplicateSavedJobException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateSavedJobException(DuplicateSavedJobException ex) {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())

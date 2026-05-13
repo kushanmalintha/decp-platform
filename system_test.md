@@ -725,6 +725,114 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 - JSON body `id` equals `{{adminCloseTestJobId}}`
 - JSON body `status` equals `CLOSED`
 
+### 20O - Student Saves Job
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
+- JSON body `id` equals `{{jobId}}`
+
+### 20P - Duplicate Saved Job Is Rejected
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `409 Conflict`
+- JSON body `error` equals `Conflict`
+- JSON body `message` contains `already saved`
+
+### 20Q - Student Gets Saved Jobs
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- `content` contains `jobId`
+- Saved job object `id` equals `{{jobId}}`
+
+### 20R - Alumni Cannot Save Job
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body `message` contains `Only students can use saved jobs`
+
+### 20S - Admin Cannot View Saved Jobs
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body `message` contains `Only students can use saved jobs`
+
+### 20T - Student Unsaves Job
+
+**Thunder Client Request**
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `204 No Content`
+
+### 20U - Saved Jobs No Longer Includes Unsaved Job
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- `content` does not include `jobId`
+
+### 20V - Saving Missing Job
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/jobs/999999/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `404 Not Found`
+- JSON body `message` contains `Job not found`
+
 ### 21 - Student Applies For Job
 
 **Thunder Client Request**
