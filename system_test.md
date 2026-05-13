@@ -459,8 +459,9 @@ This endpoint exists in user-service and is normally called by auth-service duri
 **Expected**
 
 - Status: `200 OK`
-- JSON body has `id`, `title`, `description`, `postedByEmail`, `createdAt`
+- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
 - `postedByEmail` equals `{{alumniEmail}}`
+- `status` equals `OPEN`
 - Save `id` as `jobId`
 
 ### 19 - Admin Creates Job
@@ -499,6 +500,92 @@ This endpoint exists in user-service and is normally called by auth-service duri
 - Status: `200 OK`
 - JSON body has `content`
 - `content` contains the job created in test 18
+- returned job objects include `status`
+
+### 20A - Get Jobs Existing Behavior Still Works
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`, `pageable`, `totalElements`
+- Existing jobs are returned
+
+### 20B - Search Jobs By Keyword
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?keyword=backend&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- Every returned job contains `backend` in `title` or `description`, case-insensitive
+
+### 20C - Filter Jobs By Status
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?status=OPEN&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- Every returned job has `status` equal to `OPEN`
+
+### 20D - Filter Jobs By Poster Email
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?postedByEmail={{alumniEmail}}&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- Every returned job has `postedByEmail` equal to `{{alumniEmail}}`
+
+### 20E - Search Jobs With Combined Filters
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?keyword=spring&status=OPEN&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body has `content`
+- Every returned job has `status` equal to `OPEN`
+- Every returned job contains `spring` in `title` or `description`, case-insensitive
+
+### 20F - Invalid Job Status Is Rejected
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs?status=INVALID&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `400 Bad Request`
+- JSON body `error` equals `Bad Request`
+- JSON body `message` contains `Invalid job status`
 
 ### 21 - Student Applies For Job
 

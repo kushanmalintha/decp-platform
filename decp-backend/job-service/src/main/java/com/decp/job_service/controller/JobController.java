@@ -4,6 +4,7 @@ import com.decp.job_service.dto.CreateJobRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
+import com.decp.job_service.entity.JobStatus;
 import com.decp.job_service.security.JwtUtil;
 import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,12 @@ public class JobController {
     }
 
     @GetMapping("/jobs")
-    public Page<JobResponse> getAllJobs(Pageable pageable) {
-        return jobService.getAllJobs(pageable);
+    public Page<JobResponse> getAllJobs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) JobStatus status,
+            @RequestParam(required = false) String postedByEmail,
+            Pageable pageable) {
+        return jobService.getAllJobs(keyword, status, postedByEmail, pageable);
     }
 
     @PostMapping("/jobs/{id}/apply")

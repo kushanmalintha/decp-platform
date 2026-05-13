@@ -1,6 +1,7 @@
 package com.decp.job_service.handler;
 
 import com.decp.job_service.dto.ErrorResponse;
+import com.decp.job_service.entity.JobStatus;
 import com.decp.job_service.exception.DuplicateJobApplicationException;
 import com.decp.job_service.exception.EntityNotFoundException;
 import com.decp.job_service.exception.ForbiddenOperationException;
@@ -9,8 +10,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -59,6 +63,25 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")
                 .message(ex.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException ex) {
+        String message = ex.getRequiredType() == JobStatus.class
+                ? "Invalid job status. Allowed values: " + Arrays.stream(JobStatus.values())
+                        .map(Enum::name)
+                        .collect(Collectors.joining(", "))
+                : "Invalid request parameter: " + ex.getName();
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .message(message)
                 .build();
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);

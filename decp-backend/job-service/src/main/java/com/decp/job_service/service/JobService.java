@@ -83,6 +83,16 @@ public class JobService {
                 .map(jobMapper::toJobResponse);
     }
 
+    public Page<JobResponse> getAllJobs(String keyword, JobStatus status, String postedByEmail, Pageable pageable) {
+        if (isBlank(keyword) && status == null && isBlank(postedByEmail)) {
+            return getAllJobs(pageable);
+        }
+
+        log.info("Retrieving jobs keyword={} status={} postedByEmail={}", keyword, status, postedByEmail);
+        return jobRepository.findAll(JobSpecifications.withFilters(keyword, status, postedByEmail), pageable)
+                .map(jobMapper::toJobResponse);
+    }
+
     public JobApplicationResponse applyForJob(Long jobId, String studentEmail) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found with id: " + jobId));
@@ -224,5 +234,9 @@ public class JobService {
 
     private String normalizeRole(String role) {
         return role == null ? "" : role.trim().toUpperCase();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

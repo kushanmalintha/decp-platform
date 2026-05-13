@@ -20,12 +20,19 @@ public class Job {
 
     private String postedByEmail;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private JobStatus status = JobStatus.OPEN;
+
     private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = JobStatus.OPEN;
         }
     }
 }
