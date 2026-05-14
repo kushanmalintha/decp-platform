@@ -58,6 +58,8 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `PATCH /jobs/applications/{id}/status` | Gateway allows any authenticated role, service allows owning `ALUMNI` or `RECRUITER` only |
 | `POST /feed/posts` | `STUDENT` or `ALUMNI` through gateway |
 | `GET /feed/posts` | Any authenticated role |
+| `PUT /feed/posts/{id}` | Gateway allows authenticated users; feed service allows post owner only |
+| `DELETE /feed/posts/{id}` | Gateway allows authenticated users; feed service allows post owner or `ADMIN` |
 | `POST /feed/posts/{id}/like` | Any authenticated role |
 | `POST /feed/posts/{id}/comments` | Any authenticated role |
 | `GET /feed/posts/{id}/comments` | Any authenticated role |
@@ -1114,7 +1116,7 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 
 - Status: `200 OK`
 - JSON body has `id`, `content`, `authorEmail`, `likes`, `createdAt`
-- Save `id` as `postId`
+- Save `id` as `studentPostId`
 
 ### 33 - Create Feed Post As Alumni
 
@@ -1137,6 +1139,100 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 
 - Status: `200 OK`
 - JSON body `authorEmail` equals `{{alumniEmail}}`
+- Save `id` as `alumniPostId`
+- Also save `id` as `postId` for the like/comment tests below
+
+### 33A - Student Edits Own Feed Post
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
+- Headers:
+  - `Authorization: Bearer {{studentToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "content": "Updated student feed post"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `id` equals `{{studentPostId}}`
+- JSON body `content` equals `Updated student feed post`
+- JSON body `authorEmail` still equals `{{studentEmail}}`
+
+### 33B - Alumni Edits Own Feed Post
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "content": "Updated alumni feed post"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body `id` equals `{{alumniPostId}}`
+- JSON body `content` equals `Updated alumni feed post`
+- JSON body `authorEmail` still equals `{{alumniEmail}}`
+
+### 33C - Non-Owner Cannot Edit Feed Post
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "content": "Unauthorized update attempt"
+}
+```
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body contains `Only the post owner can edit this post`
+
+### 33D - Missing Feed Post Edit Is Not Found
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/feed/posts/999999`
+- Headers:
+  - `Authorization: Bearer {{studentToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "content": "Missing post update attempt"
+}
+```
+
+**Expected**
+
+- Status: `404 Not Found`
+- JSON body `message` contains `Post not found`
 
 ### 34 - Admin Cannot Create Feed Post
 
@@ -1233,6 +1329,71 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 
 - Status: `200 OK`
 - JSON array contains the comment from test 38
+
+### 39A - Non-Owner Non-Admin Cannot Delete Feed Post
+
+**Thunder Client Request**
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `403 Forbidden`
+- JSON body contains `Only the post owner or an admin can delete this post`
+
+### 39B - Owner Deletes Own Feed Post
+
+**Thunder Client Request**
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `204 No Content`
+- Response body is empty
+
+### 39C - Deleted Feed Post No Longer Appears
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/feed/posts?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Expected**
+
+- Status: `200 OK`
+- JSON body does not include a post with `id` equal to `{{studentPostId}}`
+
+### 39D - Admin Deletes Any Feed Post
+
+**Thunder Client Request**
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Expected**
+
+- Status: `204 No Content`
+- Response body is empty
+
+### 39E - Missing Feed Post Delete Is Not Found
+
+**Thunder Client Request**
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/feed/posts/999999`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Expected**
+
+- Status: `404 Not Found`
+- JSON body `message` contains `Post not found`
 
 ### 40 - Missing Authorization Is Rejected
 

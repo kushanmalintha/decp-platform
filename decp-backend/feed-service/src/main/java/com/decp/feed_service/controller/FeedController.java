@@ -6,6 +6,7 @@ import com.decp.feed_service.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +31,26 @@ public class FeedController {
     @GetMapping("/posts")
     public Page<PostResponse> getAllPosts(Pageable pageable) {
         return feedService.getAllPosts(pageable);
+    }
+
+    @PutMapping("/posts/{id}")
+    public ResponseEntity<PostResponse> updatePost(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody UpdateFeedPostRequest request) {
+
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(feedService.updatePost(id, request, user.email(), user.role()));
+    }
+
+    @DeleteMapping("/posts/{id}")
+    public ResponseEntity<Void> deletePost(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        feedService.deletePost(id, user.email(), user.role());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/posts/{id}/like")
