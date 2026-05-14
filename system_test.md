@@ -1,13 +1,12 @@
 # DECP Platform System Tests - Thunder Client
 
-Use this file as a Thunder Client test checklist. Create one Thunder Client environment named `DECP Local` with the variables below, then run the requests in order because later tests reuse tokens and IDs created by earlier tests.
+Create a Thunder Client environment named `DECP Local`, add the variables below, and run the test cases in order. All requests use the API Gateway unless the URL explicitly uses a direct service URL.
 
-## Environment
+## Thunder Client Environment
 
 | Variable | Value |
 | --- | --- |
 | `baseUrl` | `http://localhost:8080` |
-| `authUrl` | `http://localhost:8081` |
 | `userUrl` | `http://localhost:8082` |
 | `studentEmail` | `student1@test.com` |
 | `studentPassword` | `Password123!` |
@@ -15,68 +14,29 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 | `alumniPassword` | `Password123!` |
 | `adminEmail` | `admin@test.com` |
 | `adminPassword` | `Password123!` |
-| `studentToken` | set after login |
-| `alumniToken` | set after login |
-| `adminToken` | set after login |
-| `studentUserId` | set from `GET /users/me` or admin lookup |
-| `jobId` | set from `POST /jobs` |
-| `closeTestJobId` | set from close-job workflow test job |
-| `adminCloseTestJobId` | optional, set from admin close-job workflow test |
-| `applicationId` | set from `POST /jobs/{id}/apply` |
-| `postId` | set from `POST /feed/posts` |
-| `notificationId` | set from `GET /notifications` or `GET /notifications/unread` |
+| `studentToken` | save from student login |
+| `alumniToken` | save from alumni login after role change |
+| `adminToken` | save from admin login |
+| `studentUserId` | save from `GET /users/me` |
+| `jobId1` | save from first alumni job |
+| `jobId2` | save from second alumni job |
+| `jobId3` | save from third alumni job |
+| `applicationId` | save from job application |
+| `studentPostId` | save from student feed post |
+| `alumniPostId` | save from alumni feed post |
+| `commentId1` | save from first feed comment |
+| `notificationId` | save from a visible unread notification |
 
-## Important Notes
+Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `decp_auth_db`, because there is no API that creates the first admin.
 
-- Run through the API Gateway (`{{baseUrl}}`) unless a test explicitly says direct service.
-- All `/auth/**` endpoints are public through the gateway.
-- Every non-auth gateway endpoint requires `Authorization: Bearer <token>`.
-- New registrations are created with role `STUDENT`.
-- `PUT /auth/admin/role` can assign `STUDENT` or `ALUMNI`, but the current service rejects assigning `ADMIN`. Bootstrap one admin manually before role tests, for example by updating the auth database user role to `ADMIN`.
-- Job application status transitions must follow: `APPLIED -> REVIEWING -> SHORTLISTED/REJECTED -> ACCEPTED/REJECTED`.
-- Kafka-driven notifications may need a short delay after job creation, application, or status update.
+## Auth Service
 
-## Role Matrix
+### TC-AUTH-01 - Register Student
 
-| Endpoint | Role requirement |
-| --- | --- |
-| `POST /auth/register` | Public |
-| `POST /auth/login` | Public |
-| `GET /auth/test` | Public in current gateway/auth config |
-| `PUT /auth/admin/role` | Must provide `ADMIN` token; enforced in auth service |
-| `POST /users/register` | Authenticated through gateway; intended for internal/direct user sync |
-| `GET /users/me` | Any authenticated role |
-| `PUT /users/me` | Any authenticated role |
-| `GET /users/{id}` | `ADMIN` only through gateway |
-| `POST /jobs` | `ALUMNI` or `ADMIN` through gateway |
-| `GET /jobs` | Any authenticated role |
-| `PATCH /jobs/{id}/close` | Gateway allows authenticated users; job service allows `ADMIN`, or owning `ALUMNI`/`RECRUITER` |
-| `GET /jobs/recruiter/dashboard` | Job service allows owning `ALUMNI` or `RECRUITER` only; `STUDENT` and `ADMIN` receive `403 Forbidden` |
-| `POST /jobs/{id}/apply` | `STUDENT` only through gateway and service |
-| `GET /jobs/{id}/applications` | Gateway allows any authenticated role, service allows owning `ALUMNI` or `RECRUITER` only |
-| `GET /jobs/applications/me` | Gateway allows any authenticated role, service allows `STUDENT` only |
-| `PATCH /jobs/applications/{id}/status` | Gateway allows any authenticated role, service allows owning `ALUMNI` or `RECRUITER` only |
-| `POST /feed/posts` | `STUDENT` or `ALUMNI` through gateway |
-| `GET /feed/posts` | Any authenticated role |
-| `PUT /feed/posts/{id}` | Gateway allows authenticated users; feed service allows post owner only |
-| `DELETE /feed/posts/{id}` | Gateway allows authenticated users; feed service allows post owner or `ADMIN` |
-| `POST /feed/posts/{id}/like` | Any authenticated role |
-| `POST /feed/posts/{id}/comments` | Any authenticated role |
-| `GET /feed/posts/{id}/comments` | Any authenticated role |
-| `GET /notifications` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
-| `GET /notifications/unread` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
-| `GET /notifications/unread/count` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
-| `PATCH /notifications/{id}/read` | Notification recipient email or recipient role only |
-| `PATCH /notifications/read-all` | `STUDENT`, `ALUMNI`, `RECRUITER`, or `ADMIN` |
-
-## Test Cases
-
-### 01 - Register Student
-
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/register`
+- URL: `http://localhost:8080/auth/register`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -88,17 +48,17 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- Body contains: `User registered successfully`
+- Status Code: `200`
+- Response Body contains: `User registered successfully`
 
-### 02 - Register Alumni Candidate
+### TC-AUTH-02 - Register Alumni Candidate
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/register`
+- URL: `http://localhost:8080/auth/register`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -110,17 +70,17 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- Body contains: `User registered successfully`
+- Status Code: `200`
+- Response Body contains: `User registered successfully`
 
-### 03 - Register Admin Bootstrap User
+### TC-AUTH-03 - Register Admin Bootstrap User
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/register`
+- URL: `http://localhost:8080/auth/register`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -132,21 +92,17 @@ Use this file as a Thunder Client test checklist. Create one Thunder Client envi
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- Body contains: `User registered successfully`
+- Status Code: `200`
+- Response Body contains: `User registered successfully`
 
-**Manual bootstrap**
+### TC-AUTH-04 - Login Student
 
-Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. The API currently has no endpoint that creates the first admin.
-
-### 04 - Login Student
-
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/login`
+- URL: `http://localhost:8080/auth/login`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -157,18 +113,18 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `token`
-- Save `token` as `studentToken`
+- Status Code: `200`
+- Response Body has JSON property: `token`
+- Save variable: `studentToken = $.token`
 
-### 05 - Login Alumni Candidate
+### TC-AUTH-05 - Login Alumni Candidate
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/login`
+- URL: `http://localhost:8080/auth/login`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -179,18 +135,17 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `token`
-- Save `token` as temporary candidate token if needed
+- Status Code: `200`
+- Response Body has JSON property: `token`
 
-### 06 - Login Admin
+### TC-AUTH-06 - Login Admin
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/login`
+- URL: `http://localhost:8080/auth/login`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -201,31 +156,30 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `token`
-- Save `token` as `adminToken`
+- Status Code: `200`
+- Response Body has JSON property: `token`
+- Save variable: `adminToken = $.token`
 
-### 07 - Auth Test Endpoint
+### TC-AUTH-07 - Auth Test Endpoint
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/auth/test`
+- URL: `http://localhost:8080/auth/test`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- Body contains: `Protected!`
-- Note: despite the response text, this endpoint is public in current config.
+- Status Code: `200`
+- Response Body contains: `Protected!`
 
-### 08 - Admin Assigns Alumni Role
+### TC-AUTH-08 - Admin Assigns Alumni Role
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/auth/admin/role`
+- URL: `http://localhost:8080/auth/admin/role`
 - Headers:
   - `Authorization: Bearer {{adminToken}}`
   - `Content-Type: application/json`
@@ -238,20 +192,18 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body:
-  - `email` equals `{{alumniEmail}}`
-  - `role` equals `ALUMNI`
-  - `message` equals `Role updated successfully`
+- Status Code: `200`
+- Response Body JSON property `email` equals: `{{alumniEmail}}`
+- Response Body JSON property `role` equals: `ALUMNI`
 
-### 09 - Login Alumni Again After Role Change
+### TC-AUTH-09 - Login Alumni After Role Change
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/auth/login`
+- URL: `http://localhost:8080/auth/login`
 - Headers: `Content-Type: application/json`
 - Body:
 
@@ -262,17 +214,18 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- Save returned `token` as `alumniToken`
+- Status Code: `200`
+- Response Body has JSON property: `token`
+- Save variable: `alumniToken = $.token`
 
-### 10 - Non-Admin Cannot Assign Role
+### TC-AUTH-10 - Student Cannot Assign Roles
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/auth/admin/role`
+- URL: `http://localhost:8080/auth/admin/role`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -285,17 +238,17 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- Body contains: `Only ADMIN users can assign roles`
+- Status Code: `403`
+- Response Body contains: `Only ADMIN users can assign roles`
 
-### 11 - Admin Cannot Assign Admin Role
+### TC-AUTH-11 - Admin Role Assignment Rejects Missing User
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/auth/admin/role`
+- URL: `http://localhost:8080/auth/admin/role`
 - Headers:
   - `Authorization: Bearer {{adminToken}}`
   - `Content-Type: application/json`
@@ -303,37 +256,39 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 
 ```json
 {
-  "email": "{{studentEmail}}",
-  "role": "ADMIN"
+  "email": "missing-user@test.com",
+  "role": "ALUMNI"
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `400 Bad Request`
-- Body contains: `Only existing ADMIN users can assign ADMIN role`
+- Status Code: `404`
+- Response Body contains: `not found`
 
-### 12 - Get Student Profile
+## User Service
 
-**Thunder Client Request**
+### TC-USER-01 - Get Student Profile
+
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/users/me`
+- URL: `http://localhost:8080/users/me`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `email`, `name`, `role`
-- `email` equals `{{studentEmail}}`
-- Save `id` as `studentUserId`
+- Status Code: `200`
+- Response Body JSON property `email` equals: `{{studentEmail}}`
+- Response Body has JSON property: `id`
+- Save variable: `studentUserId = $.id`
 
-### 13 - Update Student Profile
+### TC-USER-02 - Update Student Profile
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/users/me`
+- URL: `http://localhost:8080/users/me`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -345,45 +300,43 @@ Before logging in as admin, update this user to role `ADMIN` in `decp_auth_db`. 
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `name` equals `Student One Updated`
+- Status Code: `200`
+- Response Body JSON property `name` equals: `Student One Updated`
 
-### 14 - Admin Gets User By ID
+### TC-USER-03 - Admin Gets User By ID
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/users/{{studentUserId}}`
+- URL: `http://localhost:8080/users/{{studentUserId}}`
 - Headers: `Authorization: Bearer {{adminToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `id` equals `{{studentUserId}}`
+- Status Code: `200`
+- Response Body JSON property `id` equals: `{{studentUserId}}`
 
-### 15 - Student Cannot Get User By ID
+### TC-USER-04 - Student Cannot Get User By ID
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/users/{{studentUserId}}`
+- URL: `http://localhost:8080/users/{{studentUserId}}`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body contains `Insufficient permissions for this resource`
+- Status Code: `403`
+- Response Body contains: `Insufficient permissions for this resource`
 
-### 16 - User Service Register Endpoint
+### TC-USER-05 - Gateway User Register Endpoint
 
-This endpoint exists in user-service and is normally called by auth-service during registration. Through the gateway it requires authentication; direct service testing uses `{{userUrl}}`.
-
-**Thunder Client Request - gateway**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/users/register`
+- URL: `http://localhost:8080/users/register`
 - Headers:
   - `Authorization: Bearer {{adminToken}}`
   - `Content-Type: application/json`
@@ -397,12 +350,14 @@ This endpoint exists in user-service and is normally called by auth-service duri
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `201 Created`
-- JSON body has `id`, `email`, `name`, `role`
+- Status Code: `201`
+- Response Body JSON property `email` equals: `gateway-user@test.com`
 
-**Thunder Client Request - direct service**
+### TC-USER-06 - Direct User Register Endpoint
+
+**Request**
 
 - Method: `POST`
 - URL: `{{userUrl}}/users/register`
@@ -417,17 +372,19 @@ This endpoint exists in user-service and is normally called by auth-service duri
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `201 Created`
-- JSON body has `id`, `email`, `name`, `role`
+- Status Code: `201`
+- Response Body JSON property `email` equals: `direct-user@test.com`
 
-### 17 - Student Cannot Create Job
+## Job Service
 
-**Thunder Client Request**
+### TC-JOB-01 - Student Cannot Create Job
+
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs`
+- URL: `http://localhost:8080/jobs`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -435,22 +392,22 @@ This endpoint exists in user-service and is normally called by auth-service duri
 
 ```json
 {
-  "title": "Junior Backend Developer",
-  "description": "Spring Boot and PostgreSQL role"
+  "title": "Unauthorized Student Job",
+  "description": "Students should not create jobs"
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body contains `Insufficient permissions for this resource`
+- Status Code: `403`
+- Response Body contains: `Insufficient permissions for this resource`
 
-### 18 - Alumni Creates Job
+### TC-JOB-02 - Alumni Creates Job 1
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs`
+- URL: `http://localhost:8080/jobs`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -463,20 +420,67 @@ This endpoint exists in user-service and is normally called by auth-service duri
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
-- `postedByEmail` equals `{{alumniEmail}}`
-- `status` equals `OPEN`
-- Save `id` as `jobId`
+- Status Code: `200`
+- Response Body JSON property `postedByEmail` equals: `{{alumniEmail}}`
+- Response Body JSON property `status` equals: `OPEN`
+- Save variable: `jobId1 = $.id`
 
-### 19 - Admin Creates Job
+### TC-JOB-03 - Alumni Creates Job 2
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs`
+- URL: `http://localhost:8080/jobs`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "title": "Frontend React Intern",
+  "description": "React, accessibility, and API integration internship"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body JSON property `status` equals: `OPEN`
+- Save variable: `jobId2 = $.id`
+
+### TC-JOB-04 - Alumni Creates Job 3
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/jobs`
+- Headers:
+  - `Authorization: Bearer {{alumniToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "title": "QA Automation Trainee",
+  "description": "Thunder Client, Selenium, and REST API testing"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body JSON property `status` equals: `OPEN`
+- Save variable: `jobId3 = $.id`
+
+### TC-JOB-05 - Admin Creates Job
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/jobs`
 - Headers:
   - `Authorization: Bearer {{adminToken}}`
   - `Content-Type: application/json`
@@ -484,459 +488,246 @@ This endpoint exists in user-service and is normally called by auth-service duri
 
 ```json
 {
-  "title": "Platform QA Internship",
-  "description": "API testing and system testing role"
+  "title": "Platform Support Role",
+  "description": "Admin-created job for permission coverage"
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`
+- Status Code: `200`
+- Response Body has JSON property: `id`
 
-### 20 - Get Jobs
+### TC-JOB-06 - Get All Jobs
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs?page=0&size=10`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-- `content` contains the job created in test 18
-- returned job objects include `status`
-
-### 20A - Get Jobs Existing Behavior Still Works
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?page=0&size=10`
+- URL: `http://localhost:8080/jobs?page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`, `pageable`, `totalElements`
-- Existing jobs are returned
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 20B - Search Jobs By Keyword
+### TC-JOB-07 - Search Jobs By Keyword
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?keyword=backend&page=0&size=10`
+- URL: `http://localhost:8080/jobs?keyword=react&page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- Every returned job contains `backend` in `title` or `description`, case-insensitive
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 20C - Filter Jobs By Status
+### TC-JOB-08 - Filter Jobs By Status
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?status=OPEN&page=0&size=10`
+- URL: `http://localhost:8080/jobs?status=OPEN&page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- Every returned job has `status` equal to `OPEN`
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 20D - Filter Jobs By Poster Email
+### TC-JOB-09 - Filter Jobs By Poster Email
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?postedByEmail={{alumniEmail}}&page=0&size=10`
+- URL: `http://localhost:8080/jobs?postedByEmail={{alumniEmail}}&page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- Every returned job has `postedByEmail` equal to `{{alumniEmail}}`
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 20E - Search Jobs With Combined Filters
+### TC-JOB-10 - Combined Job Filters
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?keyword=spring&status=OPEN&page=0&size=10`
+- URL: `http://localhost:8080/jobs?keyword=spring&status=OPEN&postedByEmail={{alumniEmail}}&page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- Every returned job has `status` equal to `OPEN`
-- Every returned job contains `spring` in `title` or `description`, case-insensitive
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 20F - Invalid Job Status Is Rejected
+### TC-JOB-11 - Invalid Job Status Filter
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs?status=INVALID&page=0&size=10`
+- URL: `http://localhost:8080/jobs?status=INVALID&page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `400 Bad Request`
-- JSON body `error` equals `Bad Request`
-- JSON body `message` contains `Invalid job status`
+- Status Code: `400`
+- Response Body JSON property `error` equals: `Bad Request`
+- Response Body contains: `Invalid job status`
 
-### 20G - Alumni Creates Close-Test Job
+### TC-JOB-12 - Student Saves Job
 
-Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for the application workflow.
-
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs`
-- Headers:
-  - `Authorization: Bearer {{alumniToken}}`
-  - `Content-Type: application/json`
-- Body:
-
-```json
-{
-  "title": "Close Test Backend Role",
-  "description": "Used to test job closing workflow"
-}
-```
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body `status` equals `OPEN`
-- Save `id` as `closeTestJobId`
-
-### 20H - Student Cannot Close Job
-
-**Thunder Client Request**
-
-- Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/close`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/save`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only admins, alumni, or recruiters can close jobs`
+- Status Code: `200`
+- Response Body JSON property `id` equals: `{{jobId1}}`
 
-### 20I - Owning Alumni Closes Job
+### TC-JOB-13 - Duplicate Saved Job Is Rejected
 
-**Thunder Client Request**
+**Request**
 
-- Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/close`
+- Method: `POST`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `409`
+- Response Body contains: `Job is already saved`
+
+### TC-JOB-14 - Student Gets Saved Jobs
+
+**Request**
+
+- Method: `GET`
+- URL: `http://localhost:8080/jobs/saved?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body has JSON property: `content`
+
+### TC-JOB-15 - Alumni Cannot Save Job
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/save`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
-- JSON body `id` equals `{{closeTestJobId}}`
-- JSON body `status` equals `CLOSED`
+- Status Code: `403`
+- Response Body contains: `Only students can use saved jobs`
 
-### 20J - Closed Job Appears In CLOSED Filter
+### TC-JOB-16 - Student Unsaves Job
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs?status=CLOSED&page=0&size=10`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-- `content` includes `closeTestJobId`
-- Returned close-test job has `status` equal to `CLOSED`
-
-### 20K - Closed Job Excluded From OPEN Filter
-
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs?status=OPEN&page=0&size=10`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-- `content` does not include `closeTestJobId`
-
-### 20L - Student Cannot Apply To Closed Job
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{closeTestJobId}}/apply`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `400 Bad Request`
-- JSON body `error` equals `Bad Request`
-- JSON body `message` contains `Applications are closed for this job`
-
-### 20M - Alumni Creates Admin Close-Test Job
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs`
-- Headers:
-  - `Authorization: Bearer {{alumniToken}}`
-  - `Content-Type: application/json`
-- Body:
-
-```json
-{
-  "title": "Admin Close Test Role",
-  "description": "Used to verify admin can close any job"
-}
-```
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body `status` equals `OPEN`
-- Save `id` as `adminCloseTestJobId`
-
-### 20N - Admin Can Close Any Job
-
-**Thunder Client Request**
-
-- Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/{{adminCloseTestJobId}}/close`
-- Headers: `Authorization: Bearer {{adminToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body `id` equals `{{adminCloseTestJobId}}`
-- JSON body `status` equals `CLOSED`
-
-### 20O - Student Saves Job
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `id`, `title`, `description`, `postedByEmail`, `status`, `createdAt`
-- JSON body `id` equals `{{jobId}}`
-
-### 20P - Duplicate Saved Job Is Rejected
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `409 Conflict`
-- JSON body `error` equals `Conflict`
-- JSON body `message` contains `already saved`
-
-### 20Q - Student Gets Saved Jobs
-
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-- `content` contains `jobId`
-- Saved job object `id` equals `{{jobId}}`
-
-### 20R - Alumni Cannot Save Job
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
-- Headers: `Authorization: Bearer {{alumniToken}}`
-
-**Expected**
-
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only students can use saved jobs`
-
-### 20S - Admin Cannot View Saved Jobs
-
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
-- Headers: `Authorization: Bearer {{adminToken}}`
-
-**Expected**
-
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only students can use saved jobs`
-
-### 20T - Student Unsaves Job
-
-**Thunder Client Request**
+**Request**
 
 - Method: `DELETE`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/save`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/save`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `204 No Content`
+- Status Code: `204`
 
-### 20U - Saved Jobs No Longer Includes Unsaved Job
+### TC-JOB-17 - Student Applies For Job
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/saved?page=0&size=10`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-- `content` does not include `jobId`
-
-### 20V - Saving Missing Job
-
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs/999999/save`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/apply`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `404 Not Found`
-- JSON body `message` contains `Job not found`
+- Status Code: `200`
+- Response Body JSON property `jobId` equals: `{{jobId1}}`
+- Response Body JSON property `studentEmail` equals: `{{studentEmail}}`
+- Response Body JSON property `status` equals: `APPLIED`
+- Save variable: `applicationId = $.id`
 
-### 21 - Student Applies For Job
+### TC-JOB-18 - Duplicate Application Is Rejected
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/apply`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/apply`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `jobId`, `studentEmail`, `status`
-- `status` equals `APPLIED`
-- Save `id` as `applicationId`
+- Status Code: `409`
+- Response Body contains: `Student already applied`
 
-### 22 - Alumni Cannot Apply For Job
+### TC-JOB-19 - Alumni Cannot Apply For Job
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/apply`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/apply`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body contains `Insufficient permissions for this resource`
+- Status Code: `403`
+- Response Body contains: `Insufficient permissions for this resource`
 
-### 23 - Duplicate Application Is Rejected
+### TC-JOB-20 - Student Gets Own Applications
 
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/apply`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `409 Conflict`
-- JSON body `error` equals `Conflict`
-- JSON body `message` contains `Student already applied`
-
-### 24 - Student Gets Own Applications
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/applications/me`
+- URL: `http://localhost:8080/jobs/applications/me`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON array contains `applicationId`
+- Status Code: `200`
+- Response Body contains: `{{applicationId}}`
 
-### 25 - Alumni Cannot Use Student Application History Endpoint
+### TC-JOB-21 - Owning Alumni Gets Job Applications
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/applications/me`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/applications`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only students can apply for jobs`
+- Status Code: `200`
+- Response Body contains: `{{applicationId}}`
 
-### 26 - Owning Alumni Gets Applications For Job
+### TC-JOB-22 - Student Cannot Manage Job Applications
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/applications`
-- Headers: `Authorization: Bearer {{alumniToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON array contains `applicationId`
-
-### 27 - Student Cannot Get Job Applications
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/{{jobId}}/applications`
+- URL: `http://localhost:8080/jobs/{{jobId1}}/applications`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only recruiters can manage applications`
+- Status Code: `403`
+- Response Body contains: `Only recruiters can manage applications`
 
-### 28 - Alumni Updates Application To Reviewing
+### TC-JOB-23 - Alumni Updates Application To Reviewing
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/applications/{{applicationId}}/status`
+- URL: `http://localhost:8080/jobs/applications/{{applicationId}}/status`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -948,17 +739,17 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `status` equals `REVIEWING`
+- Status Code: `200`
+- Response Body JSON property `status` equals: `REVIEWING`
 
-### 29 - Invalid Status Transition Is Rejected
+### TC-JOB-24 - Invalid Application Status Transition
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/applications/{{applicationId}}/status`
+- URL: `http://localhost:8080/jobs/applications/{{applicationId}}/status`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -970,17 +761,17 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `400 Bad Request`
-- JSON body `message` contains `Invalid application status transition`
+- Status Code: `400`
+- Response Body contains: `Invalid application status transition`
 
-### 30 - Alumni Updates Application To Shortlisted
+### TC-JOB-25 - Alumni Updates Application To Shortlisted
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/applications/{{applicationId}}/status`
+- URL: `http://localhost:8080/jobs/applications/{{applicationId}}/status`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -992,17 +783,17 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `status` equals `SHORTLISTED`
+- Status Code: `200`
+- Response Body JSON property `status` equals: `SHORTLISTED`
 
-### 31 - Alumni Updates Application To Accepted
+### TC-JOB-26 - Alumni Updates Application To Accepted
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/jobs/applications/{{applicationId}}/status`
+- URL: `http://localhost:8080/jobs/applications/{{applicationId}}/status`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -1014,93 +805,113 @@ Create a second job for close-job tests so `jobId` from test 18 stays `OPEN` for
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `status` equals `ACCEPTED`
+- Status Code: `200`
+- Response Body JSON property `status` equals: `ACCEPTED`
 
-### 31A - Alumni Gets Recruiter Dashboard
+### TC-JOB-27 - Alumni Gets Recruiter Dashboard
 
-Run this after the job creation, close-job, application, and application status tests so the dashboard has meaningful counts.
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- URL: `http://localhost:8080/jobs/recruiter/dashboard`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `jobsPosted`, `openJobs`, `closedJobs`, `totalApplications`, `applied`, `reviewing`, `shortlisted`, `accepted`, `rejected`
-- `jobsPosted` is at least `1`
-- `totalApplications` is at least `1`
+- Status Code: `200`
+- Response Body has JSON property: `jobsPosted`
+- Response Body has JSON property: `totalApplications`
 
-### 31B - Student Cannot Access Recruiter Dashboard
+### TC-JOB-28 - Student Cannot Access Recruiter Dashboard
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- URL: `http://localhost:8080/jobs/recruiter/dashboard`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only recruiters can access dashboard`
+- Status Code: `403`
+- Response Body contains: `Only recruiters can access dashboard`
 
-### 31C - Admin Cannot Access Recruiter Dashboard
+### TC-JOB-29 - Owning Alumni Closes Job 2
 
-Admin dashboard behavior is not supported in job-service; the endpoint is scoped to the authenticated recruiter's own jobs.
+**Request**
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
-- Headers: `Authorization: Bearer {{adminToken}}`
-
-**Expected**
-
-- Status: `403 Forbidden`
-- JSON body `message` contains `Only recruiters can access dashboard`
-
-### 31D - Dashboard Counts Reflect Closed Jobs
-
-This uses the recruiter-owned job closed in test 20I.
-
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
+- Method: `PATCH`
+- URL: `http://localhost:8080/jobs/{{jobId2}}/close`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `closedJobs` is at least `1`
+- Status Code: `200`
+- Response Body JSON property `id` equals: `{{jobId2}}`
+- Response Body JSON property `status` equals: `CLOSED`
 
-### 31E - Dashboard Counts Reflect Application Statuses
+### TC-JOB-30 - Closed Job Appears In Closed Filter
 
-This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` to `ACCEPTED` in tests 28, 30, and 31.
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/jobs/recruiter/dashboard`
-- Headers: `Authorization: Bearer {{alumniToken}}`
+- URL: `http://localhost:8080/jobs?status=CLOSED&page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `accepted` is at least `1`
-- The moved application is counted only in its current stored status, so it contributes to `accepted`, not `applied`, `reviewing`, or `shortlisted`
+- Status Code: `200`
+- Response Body contains: `{{jobId2}}`
 
-### 32 - Create Feed Post As Student
+### TC-JOB-31 - Student Cannot Apply To Closed Job
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/feed/posts`
+- URL: `http://localhost:8080/jobs/{{jobId2}}/apply`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `400`
+- Response Body contains: `Applications are closed for this job`
+
+### TC-JOB-32 - Admin Closes Job 3
+
+**Request**
+
+- Method: `PATCH`
+- URL: `http://localhost:8080/jobs/{{jobId3}}/close`
+- Headers: `Authorization: Bearer {{adminToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body JSON property `id` equals: `{{jobId3}}`
+- Response Body JSON property `status` equals: `CLOSED`
+
+### TC-JOB-33 - Missing Job Is Not Found
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/jobs/999999/save`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `404`
+- Response Body contains: `Job not found`
+
+## Feed Service
+
+### TC-FEED-01 - Student Creates Feed Post
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/feed/posts`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -1112,18 +923,18 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `content`, `authorEmail`, `likes`, `createdAt`
-- Save `id` as `studentPostId`
+- Status Code: `200`
+- Response Body JSON property `authorEmail` equals: `{{studentEmail}}`
+- Save variable: `studentPostId = $.id`
 
-### 33 - Create Feed Post As Alumni
+### TC-FEED-02 - Alumni Creates Feed Post
 
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/feed/posts`
+- URL: `http://localhost:8080/feed/posts`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -1135,19 +946,53 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `authorEmail` equals `{{alumniEmail}}`
-- Save `id` as `alumniPostId`
-- Also save `id` as `postId` for the like/comment tests below
+- Status Code: `200`
+- Response Body JSON property `authorEmail` equals: `{{alumniEmail}}`
+- Save variable: `alumniPostId = $.id`
 
-### 33A - Student Edits Own Feed Post
+### TC-FEED-03 - Admin Cannot Create Feed Post
 
-**Thunder Client Request**
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/feed/posts`
+- Headers:
+  - `Authorization: Bearer {{adminToken}}`
+  - `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "content": "Admin post attempt."
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `403`
+- Response Body contains: `Insufficient permissions for this resource`
+
+### TC-FEED-04 - Get Feed Posts
+
+**Request**
+
+- Method: `GET`
+- URL: `http://localhost:8080/feed/posts?page=0&size=10`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body has JSON property: `content`
+
+### TC-FEED-05 - Student Updates Own Feed Post
+
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
+- URL: `http://localhost:8080/feed/posts/{{studentPostId}}`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -1159,43 +1004,17 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `id` equals `{{studentPostId}}`
-- JSON body `content` equals `Updated student feed post`
-- JSON body `authorEmail` still equals `{{studentEmail}}`
+- Status Code: `200`
+- Response Body JSON property `content` equals: `Updated student feed post`
 
-### 33B - Alumni Edits Own Feed Post
+### TC-FEED-06 - Non-Owner Cannot Update Feed Post
 
-**Thunder Client Request**
+**Request**
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
-- Headers:
-  - `Authorization: Bearer {{alumniToken}}`
-  - `Content-Type: application/json`
-- Body:
-
-```json
-{
-  "content": "Updated alumni feed post"
-}
-```
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body `id` equals `{{alumniPostId}}`
-- JSON body `content` equals `Updated alumni feed post`
-- JSON body `authorEmail` still equals `{{alumniEmail}}`
-
-### 33C - Non-Owner Cannot Edit Feed Post
-
-**Thunder Client Request**
-
-- Method: `PUT`
-- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
+- URL: `http://localhost:8080/feed/posts/{{studentPostId}}`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -1207,17 +1026,30 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- JSON body contains `Only the post owner can edit this post`
+- Status Code: `403`
+- Response Body contains: `Only the post owner can edit this post`
 
-### 33D - Missing Feed Post Edit Is Not Found
+### TC-FEED-07 - Like Feed Post
 
-**Thunder Client Request**
+**Request**
 
-- Method: `PUT`
-- URL: `{{baseUrl}}/feed/posts/999999`
+- Method: `POST`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}/like`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body has JSON property: `likes`
+
+### TC-FEED-08 - Add First Comment
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}/comments`
 - Headers:
   - `Authorization: Bearer {{studentToken}}`
   - `Content-Type: application/json`
@@ -1225,82 +1057,22 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 
 ```json
 {
-  "content": "Missing post update attempt"
+  "content": "This looks useful."
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `404 Not Found`
-- JSON body `message` contains `Post not found`
+- Status Code: `200`
+- Response Body JSON property `postId` equals: `{{alumniPostId}}`
+- Save variable: `commentId1 = $.id`
 
-### 34 - Admin Cannot Create Feed Post
+### TC-FEED-09 - Add Second Comment
 
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/feed/posts`
-- Headers:
-  - `Authorization: Bearer {{adminToken}}`
-  - `Content-Type: application/json`
-- Body:
-
-```json
-{
-  "content": "Admin announcement attempt."
-}
-```
-
-**Expected**
-
-- Status: `403 Forbidden`
-- JSON body contains `Insufficient permissions for this resource`
-
-### 35 - Get Feed Posts
-
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/feed/posts?page=0&size=10`
-- Headers: `Authorization: Bearer {{adminToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body has `content`
-
-### 36 - Like Feed Post
-
-**Thunder Client Request**
+**Request**
 
 - Method: `POST`
-- URL: `{{baseUrl}}/feed/posts/{{postId}}/like`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON body `likes` is at least `1`
-
-### 37 - Like Missing Feed Post
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/feed/posts/999999/like`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `404 Not Found`
-- JSON body `message` contains `Post not found`
-
-### 38 - Add Comment To Feed Post
-
-**Thunder Client Request**
-
-- Method: `POST`
-- URL: `{{baseUrl}}/feed/posts/{{postId}}/comments`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}/comments`
 - Headers:
   - `Authorization: Bearer {{alumniToken}}`
   - `Content-Type: application/json`
@@ -1308,290 +1080,218 @@ This uses the application moved from `APPLIED` to `REVIEWING` to `SHORTLISTED` t
 
 ```json
 {
-  "content": "Great progress!"
+  "content": "Happy to answer questions."
 }
 ```
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `id`, `postId`, `authorEmail`, `content`, `createdAt`
+- Status Code: `200`
+- Response Body JSON property `postId` equals: `{{alumniPostId}}`
 
-### 39 - Get Comments For Feed Post
+### TC-FEED-10 - Get Comments For Feed Post
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/feed/posts/{{postId}}/comments`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON array contains the comment from test 38
-
-### 39A - Non-Owner Non-Admin Cannot Delete Feed Post
-
-**Thunder Client Request**
-
-- Method: `DELETE`
-- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `403 Forbidden`
-- JSON body contains `Only the post owner or an admin can delete this post`
-
-### 39B - Owner Deletes Own Feed Post
-
-**Thunder Client Request**
-
-- Method: `DELETE`
-- URL: `{{baseUrl}}/feed/posts/{{studentPostId}}`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `204 No Content`
-- Response body is empty
-
-### 39C - Deleted Feed Post No Longer Appears
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/feed/posts?page=0&size=10`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}/comments`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body does not include a post with `id` equal to `{{studentPostId}}`
+- Status Code: `200`
+- Response Body contains: `{{commentId1}}`
 
-### 39D - Admin Deletes Any Feed Post
+### TC-FEED-11 - Missing Feed Post Like Is Not Found
 
-**Thunder Client Request**
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/feed/posts/999999/like`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `404`
+- Response Body contains: `Post not found`
+
+### TC-FEED-12 - Non-Owner Cannot Delete Feed Post
+
+**Request**
 
 - Method: `DELETE`
-- URL: `{{baseUrl}}/feed/posts/{{alumniPostId}}`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `403`
+- Response Body contains: `Only the post owner or an admin can delete this post`
+
+### TC-FEED-13 - Owner Deletes Own Feed Post
+
+**Request**
+
+- Method: `DELETE`
+- URL: `http://localhost:8080/feed/posts/{{studentPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `204`
+
+### TC-FEED-14 - Admin Deletes Feed Post
+
+**Request**
+
+- Method: `DELETE`
+- URL: `http://localhost:8080/feed/posts/{{alumniPostId}}`
 - Headers: `Authorization: Bearer {{adminToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `204 No Content`
-- Response body is empty
+- Status Code: `204`
 
-### 39E - Missing Feed Post Delete Is Not Found
+### TC-FEED-15 - Missing Authorization Is Rejected
 
-**Thunder Client Request**
-
-- Method: `DELETE`
-- URL: `{{baseUrl}}/feed/posts/999999`
-- Headers: `Authorization: Bearer {{adminToken}}`
-
-**Expected**
-
-- Status: `404 Not Found`
-- JSON body `message` contains `Post not found`
-
-### 40 - Missing Authorization Is Rejected
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/feed/posts`
+- URL: `http://localhost:8080/feed/posts`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `401 Unauthorized`
-- JSON body contains `Missing or invalid Authorization header`
+- Status Code: `401`
+- Response Body contains: `Missing or invalid Authorization header`
 
-### 41 - Student Gets Notifications
+## Notification Service
 
-Wait a few seconds after tests 18, 21, and 31 so notification-service can consume Kafka events.
+Wait a few seconds after job creation, job application, and application status updates so Kafka-driven notifications can be consumed.
 
-**Thunder Client Request**
+### TC-NOTIF-01 - Student Gets Notifications
+
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/notifications?page=0&size=10`
+- URL: `http://localhost:8080/notifications?page=0&size=10`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- May contain `JOB_CREATED` and `APPLICATION_STATUS_UPDATED` notifications
-- Save a notification `id` that belongs to this student or role as `notificationId`
+- Status Code: `200`
+- Response Body has JSON property: `content`
+- Save variable from a visible unread notification: `notificationId = $.content[0].id`
 
-### 42 - Student Gets Unread Notifications
+### TC-NOTIF-02 - Student Gets Unread Notifications
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread`
-- Headers: `Authorization: Bearer {{studentToken}}`
-
-**Expected**
-
-- Status: `200 OK`
-- JSON array contains unread notifications or an empty array
-
-### 43 - Student Gets Unread Notification Count
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread/count`
+- URL: `http://localhost:8080/notifications/unread`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has property `count`
-- `count` is a number
-- `count` is greater than or equal to `0`
+- Status Code: `200`
 
-### 44 - Count Decreases After Mark One Notification As Read
+### TC-NOTIF-03 - Student Gets Unread Count
 
-First call `GET {{baseUrl}}/notifications/unread/count` and save the current `count`.
-Use an unread notification ID visible to the student as `notificationId`.
+**Request**
 
-**Thunder Client Request**
+- Method: `GET`
+- URL: `http://localhost:8080/notifications/unread/count`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body has JSON property: `count`
+
+### TC-NOTIF-04 - Student Marks One Notification As Read
+
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/notifications/{{notificationId}}/read`
+- URL: `http://localhost:8080/notifications/{{notificationId}}/read`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Then Call**
+**Thunder Client Tests**
 
-- Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread/count`
-- Headers: `Authorization: Bearer {{studentToken}}`
+- Status Code: `200`
+- Response Body JSON property `isRead` equals: `true`
 
-**Expected**
+### TC-NOTIF-05 - Student Marks All Notifications As Read
 
-- PATCH status: `200 OK`
-- PATCH response body `isRead` equals `true`
-- Count status: `200 OK`
-- JSON body has property `count`
-- `count` is reduced by `1` if the selected notification was unread and visible to the student
-- If exact numeric assertion is difficult in Thunder Client, manually compare the before and after count values
-
-### 45 - Count Becomes Zero After Mark All Notifications As Read
-
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/notifications/read-all`
+- URL: `http://localhost:8080/notifications/read-all`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON array contains updated notifications or an empty array
+- Status Code: `200`
 
-**Then Call**
+### TC-NOTIF-06 - Student Unread Count Is Zero After Read All
+
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread/count`
+- URL: `http://localhost:8080/notifications/unread/count`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body `count` equals `0` for that user if all visible notifications were marked read
+- Status Code: `200`
+- Response Body JSON property `count` equals: `0`
 
-### 46 - Missing Authorization Is Rejected For Unread Count
+### TC-NOTIF-07 - Alumni Gets Notifications
 
-**Thunder Client Request**
-
-- Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread/count`
-
-**Expected**
-
-- Status: `401 Unauthorized`
-- Follows existing auth error style
-
-### 47 - Alumni Gets Unread Notification Count
-
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/notifications/unread/count`
+- URL: `http://localhost:8080/notifications?page=0&size=10`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has property `count`
-- `count` is a number
-- `count` is greater than or equal to `0`
+- Status Code: `200`
+- Response Body has JSON property: `content`
 
-### 48 - Alumni Gets Notifications
+### TC-NOTIF-08 - Alumni Gets Unread Count
 
-**Thunder Client Request**
+**Request**
 
 - Method: `GET`
-- URL: `{{baseUrl}}/notifications?page=0&size=10`
+- URL: `http://localhost:8080/notifications/unread/count`
 - Headers: `Authorization: Bearer {{alumniToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `200 OK`
-- JSON body has `content`
-- Should include `JOB_APPLIED` notification for the job owner after test 21
+- Status Code: `200`
+- Response Body has JSON property: `count`
 
-### 49 - Cannot Mark Another User Email Notification
+### TC-NOTIF-09 - Missing Notification Is Not Found
 
-Use a notification ID targeted only to the alumni email, then call with the student token.
-
-**Thunder Client Request**
+**Request**
 
 - Method: `PATCH`
-- URL: `{{baseUrl}}/notifications/{{notificationId}}/read`
+- URL: `http://localhost:8080/notifications/999999/read`
 - Headers: `Authorization: Bearer {{studentToken}}`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `403 Forbidden`
-- Body contains `Cannot update this notification`
+- Status Code: `404`
+- Response Body contains: `Notification not found`
 
-### 50 - Missing Notification Is Not Found
+### TC-NOTIF-10 - Missing Authorization Is Rejected
 
-**Thunder Client Request**
+**Request**
 
-- Method: `PATCH`
-- URL: `{{baseUrl}}/notifications/999999/read`
-- Headers: `Authorization: Bearer {{studentToken}}`
+- Method: `GET`
+- URL: `http://localhost:8080/notifications/unread/count`
 
-**Expected**
+**Thunder Client Tests**
 
-- Status: `404 Not Found`
-- Body contains `Notification not found`
-
-## Thunder Client Assertion Checklist
-
-For each request, add these checks in the Thunder Client `Tests` tab where applicable:
-
-| Check | Example |
-| --- | --- |
-| Status code | `Status Code = 200` |
-| JSON field exists | `Response Body has JSON property token` |
-| JSON field equals | `Response Body JSON property role equals ALUMNI` |
-| Body contains text | `Response Body contains User registered successfully` |
-| Header check | `Response Headers content-type contains application/json` |
-
-Suggested saved variables after successful responses:
-
-| Request | Save |
-| --- | --- |
-| Login Student | `studentToken = $.token` |
-| Login Alumni After Role Change | `alumniToken = $.token` |
-| Login Admin | `adminToken = $.token` |
-| Get Student Profile | `studentUserId = $.id` |
-| Create Job | `jobId = $.id` |
-| Apply For Job | `applicationId = $.id` |
-| Create Feed Post | `postId = $.id` |
-| Get Notifications | `notificationId = $.content[0].id` or the specific notification ID under test |
+- Status Code: `401`
+- Response Body contains: `Missing or invalid Authorization header`
