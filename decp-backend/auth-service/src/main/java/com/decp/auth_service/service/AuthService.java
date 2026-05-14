@@ -2,23 +2,44 @@ package com.decp.auth_service.service;
 
 import com.decp.auth_service.client.UserServiceClient;
 import com.decp.auth_service.dto.*;
+import com.decp.auth_service.entity.RefreshToken;
 import com.decp.auth_service.entity.User;
+import com.decp.auth_service.repository.RefreshTokenRepository;
 import com.decp.auth_service.repository.UserRepository;
 import com.decp.auth_service.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UserServiceClient userServiceClient;
     private static final String[] ALLOWED_ROLES = {"STUDENT", "ALUMNI", "ADMIN"};
+    private static final String TOKEN_TYPE = "Bearer";
 
+    @Value("${jwt.refresh-token-expiration-ms:604800000}")
+    private long refreshTokenExpirationMs;
+
+    @Transactional
     public void register(RegisterRequest request) {
         String name = request.getName() != null ? request.getName() : request.getEmail();
         
@@ -40,6 +61,7 @@ public class AuthService {
         userServiceClient.createUser(createUserRequest);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -48,9 +70,41 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        log.info("Login successful userEmail={} userRole={}", user.getEmail(), user.getRole());
+        return issueTokenPair(user);
+    }
 
-        return new AuthResponse(token);
+    @Transactional
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshToken refreshToken = getRefreshToken(request == null ? null : request.getRefreshToken());
+
+        if (refreshToken.isRevoked()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has been revoked");
+        }
+
+        if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            revoke(refreshToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has expired");
+        }
+
+        User user = userRepository.findByEmail(refreshToken.getUserEmail())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token user is invalid"));
+
+        revoke(refreshToken);
+        log.info("Refresh token rotated userEmail={}", user.getEmail());
+        return issueTokenPair(user);
+    }
+
+    @Transactional
+    public LogoutResponse logout(LogoutRequest request) {
+        if (request == null || request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+            return new LogoutResponse("Logged out successfully");
+        }
+
+        refreshTokenRepository.findByTokenHash(hashToken(request.getRefreshToken()))
+                .ifPresent(this::revoke);
+
+        return new LogoutResponse("Logged out successfully");
     }
 
     public RoleAssignmentResponse assignRole(String requesterEmail, String targetEmail, String newRole) {
@@ -91,5 +145,48 @@ public class AuthService {
             }
         }
         return false;
+    }
+
+    private AuthResponse issueTokenPair(User user) {
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail(), user.getRole());
+        String refreshToken = jwtUtil.generateRefreshToken();
+        LocalDateTime now = LocalDateTime.now();
+
+        refreshTokenRepository.save(RefreshToken.builder()
+                .tokenHash(hashToken(refreshToken))
+                .userEmail(user.getEmail())
+                .expiresAt(now.plus(Duration.ofMillis(refreshTokenExpirationMs)))
+                .revoked(false)
+                .createdAt(now)
+                .build());
+
+        return new AuthResponse(accessToken, refreshToken, TOKEN_TYPE);
+    }
+
+    private RefreshToken getRefreshToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token is required");
+        }
+
+        return refreshTokenRepository.findByTokenHash(hashToken(token))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+    }
+
+    private void revoke(RefreshToken refreshToken) {
+        if (!refreshToken.isRevoked()) {
+            refreshToken.setRevoked(true);
+            refreshToken.setRevokedAt(LocalDateTime.now());
+            refreshTokenRepository.save(refreshToken);
+        }
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 hashing is not available", e);
+        }
     }
 }

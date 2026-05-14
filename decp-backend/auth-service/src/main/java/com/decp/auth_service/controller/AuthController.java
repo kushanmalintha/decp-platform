@@ -27,6 +27,16 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@RequestBody RefreshTokenRequest request) {
+        return authService.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    public LogoutResponse logout(@RequestBody LogoutRequest request) {
+        return authService.logout(request);
+    }
+
     @GetMapping("/test")
     public String test() {
         return "Protected!";

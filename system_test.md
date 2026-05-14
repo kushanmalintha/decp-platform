@@ -14,9 +14,18 @@ Create a Thunder Client environment named `DECP Local`, add the variables below,
 | `alumniPassword` | `Password123!` |
 | `adminEmail` | `admin@test.com` |
 | `adminPassword` | `Password123!` |
-| `studentToken` | save from student login |
-| `alumniToken` | save from alumni login after role change |
-| `adminToken` | save from admin login |
+| `accessToken` | save from latest generic login/refresh if needed |
+| `refreshToken` | save from latest generic login/refresh if needed |
+| `studentAccessToken` | save from student login/refresh |
+| `studentRefreshToken` | save from student login/refresh |
+| `oldStudentRefreshToken` | optional; save before refresh rotation test |
+| `alumniAccessToken` | save from alumni login/refresh |
+| `alumniRefreshToken` | save from alumni login/refresh |
+| `adminAccessToken` | save from admin login/refresh |
+| `adminRefreshToken` | save from admin login/refresh |
+| `studentToken` | access token saved from student login; kept for existing requests |
+| `alumniToken` | access token saved from alumni login after role change; kept for existing requests |
+| `adminToken` | access token saved from admin login; kept for existing requests |
 | `studentUserId` | save from `GET /users/me` |
 | `jobId1` | save from first alumni job |
 | `jobId2` | save from second alumni job |
@@ -116,8 +125,14 @@ Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `dec
 **Thunder Client Tests**
 
 - Status Code: `200`
-- Response Body has JSON property: `token`
-- Save variable: `studentToken = $.token`
+- Response Body has JSON property: `accessToken`
+- Response Body has JSON property: `refreshToken`
+- Response Body JSON property `tokenType` equals: `Bearer`
+- Save variable: `studentAccessToken = $.accessToken`
+- Save variable: `studentRefreshToken = $.refreshToken`
+- Save variable: `studentToken = $.accessToken`
+- Save variable: `accessToken = $.accessToken`
+- Save variable: `refreshToken = $.refreshToken`
 
 ### TC-AUTH-05 - Login Alumni Candidate
 
@@ -138,7 +153,9 @@ Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `dec
 **Thunder Client Tests**
 
 - Status Code: `200`
-- Response Body has JSON property: `token`
+- Response Body has JSON property: `accessToken`
+- Response Body has JSON property: `refreshToken`
+- Response Body JSON property `tokenType` equals: `Bearer`
 
 ### TC-AUTH-06 - Login Admin
 
@@ -159,8 +176,12 @@ Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `dec
 **Thunder Client Tests**
 
 - Status Code: `200`
-- Response Body has JSON property: `token`
-- Save variable: `adminToken = $.token`
+- Response Body has JSON property: `accessToken`
+- Response Body has JSON property: `refreshToken`
+- Response Body JSON property `tokenType` equals: `Bearer`
+- Save variable: `adminAccessToken = $.accessToken`
+- Save variable: `adminRefreshToken = $.refreshToken`
+- Save variable: `adminToken = $.accessToken`
 
 ### TC-AUTH-07 - Auth Test Endpoint
 
@@ -173,6 +194,83 @@ Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `dec
 
 - Status Code: `200`
 - Response Body contains: `Protected!`
+
+### TC-AUTH-07A - Protected User Endpoint Works With Access Token
+
+**Request**
+
+- Method: `GET`
+- URL: `http://localhost:8080/users/me`
+- Headers: `Authorization: Bearer {{studentToken}}`
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+
+### TC-AUTH-07B - Refresh Student Access Token
+
+Before sending this request, save `oldStudentRefreshToken = {{studentRefreshToken}}` if you want to run `TC-AUTH-07C`.
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/auth/refresh`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "{{studentRefreshToken}}"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body has JSON property: `accessToken`
+- Response Body has JSON property: `refreshToken`
+- Response Body JSON property `tokenType` equals: `Bearer`
+- Save variable: `studentAccessToken = $.accessToken`
+- Save variable: `studentRefreshToken = $.refreshToken`
+- Save variable: `studentToken = $.accessToken`
+
+### TC-AUTH-07C - Old Student Refresh Token Cannot Be Reused
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/auth/refresh`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "{{oldStudentRefreshToken}}"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `401`
+
+### TC-AUTH-07D - Missing Or Invalid Refresh Token Is Rejected
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/auth/refresh`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "invalid-token"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `401`
 
 ### TC-AUTH-08 - Admin Assigns Alumni Role
 
@@ -217,8 +315,51 @@ Before `TC-AUTH-06`, manually bootstrap `admin@test.com` to role `ADMIN` in `dec
 **Thunder Client Tests**
 
 - Status Code: `200`
-- Response Body has JSON property: `token`
-- Save variable: `alumniToken = $.token`
+- Response Body has JSON property: `accessToken`
+- Response Body has JSON property: `refreshToken`
+- Response Body JSON property `tokenType` equals: `Bearer`
+- Save variable: `alumniAccessToken = $.accessToken`
+- Save variable: `alumniRefreshToken = $.refreshToken`
+- Save variable: `alumniToken = $.accessToken`
+
+### TC-AUTH-09A - Logout Revokes Student Refresh Token
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/auth/logout`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "{{studentRefreshToken}}"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `200`
+- Response Body contains: `Logged out successfully`
+
+### TC-AUTH-09B - Refresh After Logout Is Rejected
+
+**Request**
+
+- Method: `POST`
+- URL: `http://localhost:8080/auth/refresh`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "{{studentRefreshToken}}"
+}
+```
+
+**Thunder Client Tests**
+
+- Status Code: `401`
 
 ### TC-AUTH-10 - Student Cannot Assign Roles
 
