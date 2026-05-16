@@ -22,4 +22,9 @@ public class Post {
     private int likes;
 
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private FeedPostSourceType sourceType;
+
+    private Long sourceId;
 }

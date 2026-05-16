@@ -5,26 +5,20 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JobCreatedEvent {
+public class JobClosedEvent {
     private Long jobId;
     private String title;
-    private String postedBy;
-    private String description;
+    private String postedByEmail;
+    private LocalDateTime closedAt;
+    private String status;
     private String companyName;
     private String location;
     private String jobType;
     private String workMode;
-    private String salaryRange;
-    private LocalDate applicationDeadline;
-    private String requirements;
-    private String responsibilities;
-    private List<String> skillsRequired;
-    private String experienceLevel;
 }

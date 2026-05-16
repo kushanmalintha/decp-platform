@@ -8,12 +8,16 @@ import org.springframework.stereotype.Component;
 public class NotificationMapper {
 
     public NotificationResponse toResponse(Notification notification) {
+        return toResponse(notification, notification.isRead());
+    }
+
+    public NotificationResponse toResponse(Notification notification, boolean isRead) {
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
                 .type(notification.getType())
-                .isRead(notification.isRead())
+                .isRead(isRead)
                 .createdAt(notification.getCreatedAt())
                 .build();
     }

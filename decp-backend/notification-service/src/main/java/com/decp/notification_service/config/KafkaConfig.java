@@ -2,6 +2,7 @@ package com.decp.notification_service.config;
 
 import com.decp.notification_service.event.ApplicationStatusUpdatedEvent;
 import com.decp.notification_service.event.JobAppliedEvent;
+import com.decp.notification_service.event.JobClosedEvent;
 import com.decp.notification_service.event.JobCreatedEvent;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -69,6 +70,28 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, JobAppliedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(jobAppliedConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, JobClosedEvent> jobClosedConsumerFactory() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configs.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        configs.put("spring.json.trusted.packages", "*");
+        configs.put("spring.json.value.default.type", JobClosedEvent.class.getName());
+        configs.put("spring.json.use.type.headers", false);
+        return new DefaultKafkaConsumerFactory<>(configs);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, JobClosedEvent> jobClosedKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, JobClosedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(jobClosedConsumerFactory());
         return factory;
     }
 

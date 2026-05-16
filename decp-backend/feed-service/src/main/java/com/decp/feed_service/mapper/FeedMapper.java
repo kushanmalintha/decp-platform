@@ -20,6 +20,10 @@ public class FeedMapper {
                 .authorEmail(post.getAuthorEmail())
                 .likes(post.getLikes())
                 .createdAt(post.getCreatedAt())
+                .sourceType(post.getSourceType() == null
+                        ? com.decp.feed_service.entity.FeedPostSourceType.MANUAL
+                        : post.getSourceType())
+                .sourceId(post.getSourceId())
                 .build();
     }
 

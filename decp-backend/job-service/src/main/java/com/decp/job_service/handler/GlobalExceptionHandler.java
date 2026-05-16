@@ -1,7 +1,10 @@
 package com.decp.job_service.handler;
 
 import com.decp.job_service.dto.ErrorResponse;
+import com.decp.job_service.entity.ExperienceLevel;
 import com.decp.job_service.entity.JobStatus;
+import com.decp.job_service.entity.JobType;
+import com.decp.job_service.entity.WorkMode;
 import com.decp.job_service.exception.DuplicateJobApplicationException;
 import com.decp.job_service.exception.DuplicateSavedJobException;
 import com.decp.job_service.exception.EntityNotFoundException;
@@ -97,11 +100,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException ex) {
-        String message = ex.getRequiredType() == JobStatus.class
-                ? "Invalid job status. Allowed values: " + Arrays.stream(JobStatus.values())
-                        .map(Enum::name)
-                        .collect(Collectors.joining(", "))
-                : "Invalid request parameter: " + ex.getName();
+        String message = invalidEnumMessage(ex);
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
@@ -111,6 +110,28 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    private String invalidEnumMessage(MethodArgumentTypeMismatchException ex) {
+        if (ex.getRequiredType() == JobStatus.class) {
+            return "Invalid job status. Allowed values: " + allowedValues(JobStatus.values());
+        }
+        if (ex.getRequiredType() == JobType.class) {
+            return "Invalid job type. Allowed values: " + allowedValues(JobType.values());
+        }
+        if (ex.getRequiredType() == WorkMode.class) {
+            return "Invalid work mode. Allowed values: " + allowedValues(WorkMode.values());
+        }
+        if (ex.getRequiredType() == ExperienceLevel.class) {
+            return "Invalid experience level. Allowed values: " + allowedValues(ExperienceLevel.values());
+        }
+        return "Invalid request parameter: " + ex.getName();
+    }
+
+    private String allowedValues(Enum<?>[] values) {
+        return Arrays.stream(values)
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
     }
 
     @ExceptionHandler(RuntimeException.class)

@@ -1,26 +1,17 @@
 package com.decp.job_service.dto;
 
 import com.decp.job_service.entity.ExperienceLevel;
-import com.decp.job_service.entity.JobStatus;
 import com.decp.job_service.entity.JobType;
 import com.decp.job_service.entity.WorkMode;
-import lombok.*;
+import lombok.Data;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class JobResponse {
-
-    private Long id;
+@Data
+public class UpdateJobRequest {
     private String title;
     private String description;
-    private String postedByEmail;
     private String companyName;
     private String location;
     private JobType jobType;
@@ -31,6 +22,4 @@ public class JobResponse {
     private String responsibilities;
     private List<String> skillsRequired;
     private ExperienceLevel experienceLevel;
-    private JobStatus status;
-    private LocalDateTime createdAt;
 }

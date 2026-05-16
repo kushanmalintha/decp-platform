@@ -37,11 +37,6 @@ public class AuthController {
         return authService.logout(request);
     }
 
-    @GetMapping("/test")
-    public String test() {
-        return "Protected!";
-    }
-
     @PutMapping("/admin/role")
     public ResponseEntity<?> assignRole(
             @RequestHeader(value = "Authorization", required = false) String authHeader,

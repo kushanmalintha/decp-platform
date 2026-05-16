@@ -5,7 +5,11 @@ import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
+import com.decp.job_service.dto.UpdateJobRequest;
+import com.decp.job_service.entity.ExperienceLevel;
 import com.decp.job_service.entity.JobStatus;
+import com.decp.job_service.entity.JobType;
+import com.decp.job_service.entity.WorkMode;
 import com.decp.job_service.security.JwtUtil;
 import com.decp.job_service.service.JobService;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +33,7 @@ public class JobController {
             @RequestBody CreateJobRequest request) {
 
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
-        return jobService.createJob(user.email(), request);
+        return jobService.createJob(user.email(), user.role(), request);
     }
 
     @GetMapping("/jobs")
@@ -37,8 +41,21 @@ public class JobController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) JobStatus status,
             @RequestParam(required = false) String postedByEmail,
+            @RequestParam(required = false) JobType jobType,
+            @RequestParam(required = false) WorkMode workMode,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) ExperienceLevel experienceLevel,
             Pageable pageable) {
-        return jobService.getAllJobs(keyword, status, postedByEmail, pageable);
+        return jobService.getAllJobs(keyword, status, postedByEmail, jobType, workMode, location, experienceLevel, pageable);
+    }
+
+    @PutMapping("/jobs/{id}")
+    public ResponseEntity<JobResponse> updateJob(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody UpdateJobRequest request) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(jobService.updateJob(id, user.email(), user.role(), request));
     }
 
     @PostMapping("/jobs/{id}/save")

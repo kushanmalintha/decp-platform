@@ -32,6 +32,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Query("""
             select n from Notification n
+            where n.recipientEmail = :email
+               or n.recipientRole = :role
+            order by n.createdAt desc
+            """)
+    List<Notification> findAllForRecipient(
+            @Param("email") String email,
+            @Param("role") String role);
+
+    @Query("""
+            select n from Notification n
             where n.read = false
               and (n.recipientEmail = :email or n.recipientRole = :role)
             order by n.createdAt desc

@@ -39,6 +39,22 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic jobUpdatedTopic() {
+        return TopicBuilder.name("job.updated")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic jobClosedTopic() {
+        return TopicBuilder.name("job.closed")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
     public NewTopic jobAppliedTopic() {
         return TopicBuilder.name("job.applied")
                 .partitions(1)

@@ -3,11 +3,15 @@ package com.decp.notification_service.service;
 import com.decp.notification_service.dto.NotificationResponse;
 import com.decp.notification_service.dto.UnreadNotificationCountResponse;
 import com.decp.notification_service.entity.Notification;
+import com.decp.notification_service.entity.NotificationRead;
 import com.decp.notification_service.event.ApplicationStatusUpdatedEvent;
 import com.decp.notification_service.event.JobAppliedEvent;
+import com.decp.notification_service.event.JobClosedEvent;
 import com.decp.notification_service.event.JobCreatedEvent;
 import com.decp.notification_service.mapper.NotificationMapper;
+import com.decp.notification_service.repository.NotificationReadRepository;
 import com.decp.notification_service.repository.NotificationRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +35,12 @@ public class NotificationService {
     private static final String ROLE_RECRUITER = "RECRUITER";
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String TYPE_JOB_CREATED = "JOB_CREATED";
+    private static final String TYPE_JOB_CLOSED = "JOB_CLOSED";
     private static final String TYPE_JOB_APPLIED = "JOB_APPLIED";
     private static final String TYPE_APPLICATION_STATUS_UPDATED = "APPLICATION_STATUS_UPDATED";
 
     private final NotificationRepository notificationRepository;
+    private final NotificationReadRepository notificationReadRepository;
     private final NotificationMapper notificationMapper;
 
     public Notification createJobPostedNotification(JobCreatedEvent event) {
@@ -46,6 +54,23 @@ public class NotificationService {
                 .message(message)
                 .type(TYPE_JOB_CREATED)
                 .postedBy(event.getPostedBy())
+                .recipientRole(ROLE_STUDENT)
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return notificationRepository.save(notification);
+    }
+
+    public Notification createJobClosedNotification(JobClosedEvent event) {
+        String message = String.format("Job closed: %s", event.getTitle());
+
+        Notification notification = Notification.builder()
+                .jobId(event.getJobId())
+                .title(event.getTitle())
+                .message(message)
+                .type(TYPE_JOB_CLOSED)
+                .postedBy(event.getPostedByEmail())
                 .recipientRole(ROLE_STUDENT)
                 .read(false)
                 .createdAt(LocalDateTime.now())
@@ -99,27 +124,40 @@ public class NotificationService {
 
     public Page<NotificationResponse> getNotifications(String email, String role, Pageable pageable) {
         validateAuthenticatedUser(email, role);
+        String normalizedEmail = normalizeEmail(email);
 
         return notificationRepository.findForRecipient(email, normalizeRole(role), pageable)
-                .map(notificationMapper::toResponse);
+                .map(notification -> notificationMapper.toResponse(
+                        notification,
+                        isReadByUser(notification.getId(), normalizedEmail)));
     }
 
     public List<NotificationResponse> getUnreadNotifications(String email, String role) {
         validateAuthenticatedUser(email, role);
+        String normalizedEmail = normalizeEmail(email);
 
-        return notificationRepository.findUnreadForRecipient(email, normalizeRole(role))
+        List<Notification> visibleNotifications = notificationRepository.findAllForRecipient(email, normalizeRole(role));
+        Set<Long> readNotificationIds = readNotificationIds(normalizedEmail, visibleNotifications);
+
+        return visibleNotifications
                 .stream()
-                .map(notificationMapper::toResponse)
+                .filter(notification -> !readNotificationIds.contains(notification.getId()))
+                .map(notification -> notificationMapper.toResponse(notification, false))
                 .toList();
     }
 
     public UnreadNotificationCountResponse getUnreadCount(String email, String role) {
         validateAuthenticatedUser(email, role);
 
+        String normalizedEmail = normalizeEmail(email);
         String normalizedRole = normalizeRole(role);
         log.info("Unread notification count requested userEmail={} userRole={}", email, normalizedRole);
 
-        long count = notificationRepository.countUnreadForRecipient(email, normalizedRole);
+        List<Notification> visibleNotifications = notificationRepository.findAllForRecipient(email, normalizedRole);
+        Set<Long> readNotificationIds = readNotificationIds(normalizedEmail, visibleNotifications);
+        long count = visibleNotifications.stream()
+                .filter(notification -> !readNotificationIds.contains(notification.getId()))
+                .count();
 
         log.info("Unread notification count returned userEmail={} userRole={} count={}", email, normalizedRole, count);
         return new UnreadNotificationCountResponse(count);
@@ -127,6 +165,7 @@ public class NotificationService {
 
     public NotificationResponse markAsRead(Long id, String email, String role) {
         validateAuthenticatedUser(email, role);
+        String normalizedEmail = normalizeEmail(email);
 
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
@@ -135,21 +174,63 @@ public class NotificationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot update this notification");
         }
 
-        notification.setRead(true);
-        return notificationMapper.toResponse(notificationRepository.save(notification));
+        markNotificationReadForUser(notification.getId(), normalizedEmail);
+        return notificationMapper.toResponse(notification, true);
     }
 
     public List<NotificationResponse> markAllAsRead(String email, String role) {
         validateAuthenticatedUser(email, role);
+        String normalizedEmail = normalizeEmail(email);
 
-        List<Notification> notifications =
-                notificationRepository.findUnreadForRecipient(email, normalizeRole(role));
-
-        notifications.forEach(notification -> notification.setRead(true));
-        return notificationRepository.saveAll(notifications)
-                .stream()
-                .map(notificationMapper::toResponse)
+        List<Notification> notifications = notificationRepository.findAllForRecipient(email, normalizeRole(role));
+        Set<Long> readNotificationIds = readNotificationIds(normalizedEmail, notifications);
+        List<Notification> unreadNotifications = notifications.stream()
+                .filter(notification -> !readNotificationIds.contains(notification.getId()))
                 .toList();
+
+        unreadNotifications.forEach(notification -> markNotificationReadForUser(notification.getId(), normalizedEmail));
+        log.info("Marked all visible notifications read for userEmail={} count={}", normalizedEmail, unreadNotifications.size());
+
+        return notifications
+                .stream()
+                .map(notification -> notificationMapper.toResponse(notification, true))
+                .toList();
+    }
+
+    private boolean isReadByUser(Long notificationId, String userEmail) {
+        return notificationReadRepository.existsByNotificationIdAndUserEmail(notificationId, userEmail);
+    }
+
+    private Set<Long> readNotificationIds(String userEmail, List<Notification> notifications) {
+        List<Long> notificationIds = notifications.stream()
+                .map(Notification::getId)
+                .toList();
+
+        if (notificationIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return notificationReadRepository.findByUserEmailAndNotificationIdIn(userEmail, notificationIds)
+                .stream()
+                .map(NotificationRead::getNotificationId)
+                .collect(Collectors.toSet());
+    }
+
+    private void markNotificationReadForUser(Long notificationId, String userEmail) {
+        if (notificationReadRepository.existsByNotificationIdAndUserEmail(notificationId, userEmail)) {
+            return;
+        }
+
+        try {
+            notificationReadRepository.save(NotificationRead.builder()
+                    .notificationId(notificationId)
+                    .userEmail(userEmail)
+                    .readAt(LocalDateTime.now())
+                    .build());
+            log.info("Created notification read state notificationId={} userEmail={}", notificationId, userEmail);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Notification read state already exists notificationId={} userEmail={}", notificationId, userEmail);
+        }
     }
 
     private void validateAuthenticatedUser(String email, String role) {
@@ -175,6 +256,10 @@ public class NotificationService {
 
     private String normalizeRole(String role) {
         return role == null ? "" : role.trim().toUpperCase();
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 
     private String buildApplicationStatusMessage(String jobTitle, String status) {

@@ -2,6 +2,8 @@ package com.decp.feed_service.service;
 
 import com.decp.feed_service.dto.*;
 import com.decp.feed_service.entity.*;
+import com.decp.feed_service.event.JobClosedEvent;
+import com.decp.feed_service.event.JobUpdatedEvent;
 import com.decp.feed_service.exception.EntityNotFoundException;
 import com.decp.feed_service.exception.ForbiddenException;
 import com.decp.feed_service.mapper.FeedMapper;
@@ -10,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +36,7 @@ public class FeedService {
                 .content(request.getContent())
                 .likes(0)
                 .createdAt(LocalDateTime.now())
+                .sourceType(FeedPostSourceType.MANUAL)
                 .build();
 
         Post savedPost = postRepository.save(post);
@@ -44,9 +49,27 @@ public class FeedService {
                 .content(content)
                 .likes(0)
                 .createdAt(LocalDateTime.now())
+                .sourceType(FeedPostSourceType.MANUAL)
                 .build();
 
         postRepository.save(post);
+    }
+
+    public void createJobPost(String email, Long jobId, String content) {
+        Post post = Post.builder()
+                .authorEmail(email)
+                .content(content)
+                .likes(0)
+                .createdAt(LocalDateTime.now())
+                .sourceType(FeedPostSourceType.JOB)
+                .sourceId(jobId)
+                .build();
+
+        Post savedPost = postRepository.save(post);
+        log.info("Created job-generated feed post postId={} jobId={} authorEmail={}",
+                savedPost.getId(),
+                jobId,
+                email);
     }
 
     public Page<PostResponse> getAllPosts(Pageable pageable) {
@@ -60,6 +83,14 @@ public class FeedService {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
+
+        if (isJobGenerated(post)) {
+            log.warn("Blocked manual edit of job-generated feed post postId={} sourceId={} requesterEmail={}",
+                    postId,
+                    post.getSourceId(),
+                    requesterEmail);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Job-generated feed posts cannot be edited manually");
+        }
 
         if (isAdmin(requesterRole) || !isOwner(post, requesterEmail)) {
             log.warn("Forbidden feed modification attempt: action=update, postId={}, ownerEmail={}, requesterEmail={}, requesterRole={}",
@@ -128,6 +159,84 @@ public class FeedService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void updateJobPostClosed(JobClosedEvent event) {
+        if (event == null || event.getJobId() == null) {
+            log.warn("Received invalid job.closed event with missing jobId");
+            return;
+        }
+
+        postRepository.findBySourceTypeAndSourceId(FeedPostSourceType.JOB, event.getJobId())
+                .ifPresentOrElse(post -> {
+                    post.setContent(buildClosedJobContent(event));
+                    postRepository.save(post);
+                    log.info("Updated job-generated feed post as closed postId={} jobId={}",
+                            post.getId(),
+                            event.getJobId());
+                }, () -> log.warn("No job-generated feed post found for closed job jobId={}", event.getJobId()));
+    }
+
+    @Transactional
+    public void updateJobPostUpdated(JobUpdatedEvent event) {
+        if (event == null || event.getJobId() == null) {
+            log.warn("Received invalid job.updated event with missing jobId");
+            return;
+        }
+
+        postRepository.findBySourceTypeAndSourceId(FeedPostSourceType.JOB, event.getJobId())
+                .ifPresentOrElse(post -> {
+                    post.setContent(buildUpdatedJobContent(event));
+                    postRepository.save(post);
+                    log.info("Updated existing job-generated feed post from job.updated postId={} jobId={}",
+                            post.getId(),
+                            event.getJobId());
+                }, () -> log.warn("No job-generated feed post found for updated job jobId={}", event.getJobId()));
+    }
+
+    private String buildUpdatedJobContent(JobUpdatedEvent event) {
+        return String.join("\n",
+                "Job updated: " + valueOrDefault(event.getTitle()),
+                "Company: " + valueOrDefault(event.getCompanyName()),
+                "Location: " + valueOrDefault(event.getLocation()),
+                "Type: " + valueOrDefault(event.getJobType()),
+                "Work mode: " + valueOrDefault(event.getWorkMode()),
+                "Experience: " + valueOrDefault(event.getExperienceLevel()),
+                "Salary: " + valueOrDefault(event.getSalaryRange()),
+                "Application deadline: " + valueOrDefault(event.getApplicationDeadline()),
+                "Description: " + valueOrDefault(event.getDescription()),
+                "Requirements: " + valueOrDefault(event.getRequirements()),
+                "Responsibilities: " + valueOrDefault(event.getResponsibilities()),
+                "Skills required: " + joinSkills(event.getSkillsRequired()));
+    }
+
+    private String buildClosedJobContent(JobClosedEvent event) {
+        return String.join("\n",
+                "[Closed] Job closed: " + valueOrDefault(event.getTitle()),
+                "",
+                "This job posting is now closed.",
+                "",
+                "Posted by: " + valueOrDefault(event.getPostedByEmail()),
+                "Company: " + valueOrDefault(event.getCompanyName()),
+                "Location: " + valueOrDefault(event.getLocation()),
+                "Type: " + valueOrDefault(event.getJobType()),
+                "Work mode: " + valueOrDefault(event.getWorkMode()));
+    }
+
+    private String joinSkills(List<String> skills) {
+        if (skills == null || skills.isEmpty()) {
+            return "N/A";
+        }
+        return String.join(", ", skills);
+    }
+
+    private String valueOrDefault(Object value) {
+        if (value == null) {
+            return "N/A";
+        }
+        String text = value.toString();
+        return text.isBlank() ? "N/A" : text;
+    }
+
     private boolean isOwner(Post post, String requesterEmail) {
         return post.getAuthorEmail() != null
                 && requesterEmail != null
@@ -136,5 +245,9 @@ public class FeedService {
 
     private boolean isAdmin(String requesterRole) {
         return "ADMIN".equalsIgnoreCase(requesterRole);
+    }
+
+    private boolean isJobGenerated(Post post) {
+        return FeedPostSourceType.JOB.equals(post.getSourceType());
     }
 }

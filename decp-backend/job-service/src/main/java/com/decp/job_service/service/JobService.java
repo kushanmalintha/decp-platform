@@ -5,10 +5,13 @@ import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
+import com.decp.job_service.dto.UpdateJobRequest;
 import com.decp.job_service.entity.*;
 import com.decp.job_service.event.ApplicationStatusUpdatedEvent;
 import com.decp.job_service.event.JobAppliedEvent;
+import com.decp.job_service.event.JobClosedEvent;
 import com.decp.job_service.event.JobCreatedEvent;
+import com.decp.job_service.event.JobUpdatedEvent;
 import com.decp.job_service.exception.DuplicateJobApplicationException;
 import com.decp.job_service.exception.DuplicateSavedJobException;
 import com.decp.job_service.exception.EntityNotFoundException;
@@ -27,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -63,39 +67,99 @@ public class JobService {
     private final JobApplicationMapper jobApplicationMapper;
     private final JobEventProducer jobEventProducer;
 
-    public JobResponse createJob(String email, CreateJobRequest request) {
+    @Transactional
+    public JobResponse createJob(String email, String role, CreateJobRequest request) {
+        validateCanCreateJob(email, role);
+        validateCreateJobRequest(request);
+
         Job job = Job.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .postedByEmail(email)
+                .companyName(request.getCompanyName())
+                .location(request.getLocation())
+                .jobType(request.getJobType())
+                .workMode(request.getWorkMode())
+                .salaryRange(request.getSalaryRange())
+                .applicationDeadline(request.getApplicationDeadline())
+                .requirements(request.getRequirements())
+                .responsibilities(request.getResponsibilities())
+                .skillsRequired(request.getSkillsRequired() == null
+                        ? new ArrayList<>()
+                        : new ArrayList<>(request.getSkillsRequired()))
+                .experienceLevel(request.getExperienceLevel())
                 .build();
 
         Job savedJob = jobRepository.save(job);
 
-        // Publish event
-        JobCreatedEvent event = JobCreatedEvent.builder()
-                .jobId(savedJob.getId())
-                .title(savedJob.getTitle())
-                .postedBy(savedJob.getPostedByEmail())
-                .build();
-
-        jobEventProducer.sendJobCreatedEvent(event);
+        jobEventProducer.sendJobCreatedEvent(toJobCreatedEvent(savedJob));
 
         return jobMapper.toJobResponse(savedJob);
     }
 
+    @Transactional
+    public JobResponse updateJob(Long jobId, String requesterEmail, String requesterRole, UpdateJobRequest request) {
+        log.info("Job update requested jobId={} requesterEmail={} requesterRole={}",
+                jobId, requesterEmail, normalizeRole(requesterRole));
+
+        validateUpdateJobRequest(request);
+        Job job = findJob(jobId);
+        validateCanUpdateJob(job, requesterEmail, requesterRole);
+
+        job.setTitle(request.getTitle());
+        job.setDescription(request.getDescription());
+        job.setCompanyName(request.getCompanyName());
+        job.setLocation(request.getLocation());
+        job.setJobType(request.getJobType());
+        job.setWorkMode(request.getWorkMode());
+        job.setSalaryRange(request.getSalaryRange());
+        job.setApplicationDeadline(request.getApplicationDeadline());
+        job.setRequirements(request.getRequirements());
+        job.setResponsibilities(request.getResponsibilities());
+        job.setSkillsRequired(new ArrayList<>(request.getSkillsRequired()));
+        job.setExperienceLevel(request.getExperienceLevel());
+
+        Job savedJob = jobRepository.save(job);
+        jobEventProducer.sendJobUpdatedEvent(toJobUpdatedEvent(savedJob));
+
+        log.info("Job updated successfully jobId={} requesterEmail={} postedByEmail={}",
+                savedJob.getId(), requesterEmail, savedJob.getPostedByEmail());
+        return jobMapper.toJobResponse(savedJob);
+    }
+
+    @Transactional(readOnly = true)
     public Page<JobResponse> getAllJobs(Pageable pageable) {
         return jobRepository.findAll(pageable)
                 .map(jobMapper::toJobResponse);
     }
 
-    public Page<JobResponse> getAllJobs(String keyword, JobStatus status, String postedByEmail, Pageable pageable) {
-        if (isBlank(keyword) && status == null && isBlank(postedByEmail)) {
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getAllJobs(
+            String keyword,
+            JobStatus status,
+            String postedByEmail,
+            JobType jobType,
+            WorkMode workMode,
+            String location,
+            ExperienceLevel experienceLevel,
+            Pageable pageable) {
+        if (isBlank(keyword)
+                && status == null
+                && isBlank(postedByEmail)
+                && jobType == null
+                && workMode == null
+                && isBlank(location)
+                && experienceLevel == null) {
             return getAllJobs(pageable);
         }
 
-        log.info("Retrieving jobs keyword={} status={} postedByEmail={}", keyword, status, postedByEmail);
-        return jobRepository.findAll(JobSpecifications.withFilters(keyword, status, postedByEmail), pageable)
+        log.info(
+                "Retrieving jobs keyword={} status={} postedByEmail={} jobType={} workMode={} location={} experienceLevel={}",
+                keyword, status, postedByEmail, jobType, workMode, location, experienceLevel);
+        return jobRepository.findAll(
+                        JobSpecifications.withFilters(
+                                keyword, status, postedByEmail, jobType, workMode, location, experienceLevel),
+                        pageable)
                 .map(jobMapper::toJobResponse);
     }
 
@@ -174,6 +238,18 @@ public class JobService {
 
         job.setStatus(JobStatus.CLOSED);
         Job savedJob = jobRepository.save(job);
+        JobClosedEvent event = JobClosedEvent.builder()
+                .jobId(savedJob.getId())
+                .title(savedJob.getTitle())
+                .postedByEmail(savedJob.getPostedByEmail())
+                .closedAt(java.time.LocalDateTime.now())
+                .status(savedJob.getStatus().name())
+                .companyName(savedJob.getCompanyName())
+                .location(savedJob.getLocation())
+                .jobType(savedJob.getJobType() == null ? null : savedJob.getJobType().name())
+                .workMode(savedJob.getWorkMode() == null ? null : savedJob.getWorkMode().name())
+                .build();
+        jobEventProducer.sendJobClosedEvent(event);
 
         log.info("Job closed successfully jobId={} requesterEmail={} postedByEmail={}",
                 savedJob.getId(), requesterEmail, savedJob.getPostedByEmail());
@@ -336,6 +412,84 @@ public class JobService {
         validateStudentRole(role, "Only students can apply for jobs");
     }
 
+    private void validateCanCreateJob(String requesterEmail, String role) {
+        String normalizedRole = normalizeRole(role);
+        if (ROLE_ALUMNI.equals(normalizedRole) || ROLE_RECRUITER.equals(normalizedRole) || ROLE_ADMIN.equals(normalizedRole)) {
+            return;
+        }
+
+        log.warn("Rejected job creation requesterEmail={} requesterRole={} reason=insufficient_role",
+                requesterEmail,
+                normalizedRole);
+        throw new ForbiddenOperationException("Only alumni, recruiters, or admins can create jobs");
+    }
+
+    private void validateCreateJobRequest(CreateJobRequest request) {
+        if (request == null) {
+            throw new InvalidJobOperationException("Job request is required");
+        }
+
+        requireText(request.getTitle(), "title");
+        requireText(request.getDescription(), "description");
+        requireText(request.getCompanyName(), "companyName");
+        requireText(request.getLocation(), "location");
+        requireValue(request.getJobType(), "jobType");
+        requireValue(request.getWorkMode(), "workMode");
+        requireText(request.getSalaryRange(), "salaryRange");
+        requireValue(request.getApplicationDeadline(), "applicationDeadline");
+        requireText(request.getRequirements(), "requirements");
+        requireText(request.getResponsibilities(), "responsibilities");
+        requireValue(request.getExperienceLevel(), "experienceLevel");
+
+        if (request.getSkillsRequired() == null || request.getSkillsRequired().isEmpty()) {
+            throw new InvalidJobOperationException("skillsRequired is required");
+        }
+
+        boolean hasBlankSkill = request.getSkillsRequired().stream().anyMatch(this::isBlank);
+        if (hasBlankSkill) {
+            throw new InvalidJobOperationException("skillsRequired must not contain blank values");
+        }
+    }
+
+    private void validateUpdateJobRequest(UpdateJobRequest request) {
+        if (request == null) {
+            throw new InvalidJobOperationException("Job update request is required");
+        }
+
+        requireText(request.getTitle(), "title");
+        requireText(request.getDescription(), "description");
+        requireText(request.getCompanyName(), "companyName");
+        requireText(request.getLocation(), "location");
+        requireValue(request.getJobType(), "jobType");
+        requireValue(request.getWorkMode(), "workMode");
+        requireText(request.getSalaryRange(), "salaryRange");
+        requireValue(request.getApplicationDeadline(), "applicationDeadline");
+        requireText(request.getRequirements(), "requirements");
+        requireText(request.getResponsibilities(), "responsibilities");
+        requireValue(request.getExperienceLevel(), "experienceLevel");
+
+        if (request.getSkillsRequired() == null || request.getSkillsRequired().isEmpty()) {
+            throw new InvalidJobOperationException("skillsRequired is required");
+        }
+
+        boolean hasBlankSkill = request.getSkillsRequired().stream().anyMatch(this::isBlank);
+        if (hasBlankSkill) {
+            throw new InvalidJobOperationException("skillsRequired must not contain blank values");
+        }
+    }
+
+    private void requireText(String value, String fieldName) {
+        if (isBlank(value)) {
+            throw new InvalidJobOperationException(fieldName + " is required");
+        }
+    }
+
+    private void requireValue(Object value, String fieldName) {
+        if (value == null) {
+            throw new InvalidJobOperationException(fieldName + " is required");
+        }
+    }
+
     private void validateSavedJobStudentRole(String role) {
         validateStudentRole(role, "Only students can use saved jobs");
     }
@@ -379,6 +533,71 @@ public class JobService {
                     job.getId(), requesterEmail, normalizedRole, job.getPostedByEmail());
             throw new ForbiddenOperationException("Cannot close another user's job");
         }
+    }
+
+    private void validateCanUpdateJob(Job job, String requesterEmail, String requesterRole) {
+        String normalizedRole = normalizeRole(requesterRole);
+
+        if (job.getStatus() == JobStatus.CLOSED) {
+            log.warn("Rejected closed job update jobId={} requesterEmail={} requesterRole={}",
+                    job.getId(), requesterEmail, normalizedRole);
+            throw new InvalidJobOperationException("Closed jobs cannot be edited");
+        }
+
+        if (ROLE_ADMIN.equals(normalizedRole)) {
+            return;
+        }
+
+        if (!ROLE_RECRUITER.equals(normalizedRole) && !ROLE_ALUMNI.equals(normalizedRole)) {
+            log.warn("Unauthorized job update attempt jobId={} requesterEmail={} requesterRole={} reason=insufficient_role",
+                    job.getId(), requesterEmail, normalizedRole);
+            throw new ForbiddenOperationException("Only admins, alumni, or recruiters can update jobs");
+        }
+
+        if (requesterEmail == null || !requesterEmail.equalsIgnoreCase(job.getPostedByEmail())) {
+            log.warn("Unauthorized job update attempt jobId={} requesterEmail={} requesterRole={} postedByEmail={} reason=not_owner",
+                    job.getId(), requesterEmail, normalizedRole, job.getPostedByEmail());
+            throw new ForbiddenOperationException("Cannot update another user's job");
+        }
+    }
+
+    private JobCreatedEvent toJobCreatedEvent(Job job) {
+        return JobCreatedEvent.builder()
+                .jobId(job.getId())
+                .title(job.getTitle())
+                .postedBy(job.getPostedByEmail())
+                .description(job.getDescription())
+                .companyName(job.getCompanyName())
+                .location(job.getLocation())
+                .jobType(job.getJobType().name())
+                .workMode(job.getWorkMode().name())
+                .salaryRange(job.getSalaryRange())
+                .applicationDeadline(job.getApplicationDeadline())
+                .requirements(job.getRequirements())
+                .responsibilities(job.getResponsibilities())
+                .skillsRequired(new ArrayList<>(job.getSkillsRequired()))
+                .experienceLevel(job.getExperienceLevel().name())
+                .build();
+    }
+
+    private JobUpdatedEvent toJobUpdatedEvent(Job job) {
+        return JobUpdatedEvent.builder()
+                .jobId(job.getId())
+                .title(job.getTitle())
+                .postedBy(job.getPostedByEmail())
+                .description(job.getDescription())
+                .companyName(job.getCompanyName())
+                .location(job.getLocation())
+                .jobType(job.getJobType().name())
+                .workMode(job.getWorkMode().name())
+                .salaryRange(job.getSalaryRange())
+                .applicationDeadline(job.getApplicationDeadline())
+                .requirements(job.getRequirements())
+                .responsibilities(job.getResponsibilities())
+                .skillsRequired(new ArrayList<>(job.getSkillsRequired()))
+                .experienceLevel(job.getExperienceLevel().name())
+                .status((job.getStatus() == null ? JobStatus.OPEN : job.getStatus()).name())
+                .build();
     }
 
     private void validateJobOwnership(Job job, String recruiterEmail) {

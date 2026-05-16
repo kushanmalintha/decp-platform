@@ -1,25 +1,31 @@
-package com.decp.job_service.dto;
+package com.decp.feed_service.event;
 
-import com.decp.job_service.entity.ExperienceLevel;
-import com.decp.job_service.entity.JobType;
-import com.decp.job_service.entity.WorkMode;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class CreateJobRequest {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class JobUpdatedEvent {
+    private Long jobId;
     private String title;
+    private String postedBy;
     private String description;
     private String companyName;
     private String location;
-    private JobType jobType;
-    private WorkMode workMode;
+    private String jobType;
+    private String workMode;
     private String salaryRange;
     private LocalDate applicationDeadline;
     private String requirements;
     private String responsibilities;
     private List<String> skillsRequired;
-    private ExperienceLevel experienceLevel;
+    private String experienceLevel;
+    private String status;
 }
