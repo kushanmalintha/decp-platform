@@ -37,14 +37,13 @@ public class UserService {
         return UserProfileResponse.from(userRepository.save(user));
     }
 
-    @Transactional
-    public UserProfileResponse getOrCreateUser(String email, String role) {
-        return UserProfileResponse.from(getOrCreateUserProfile(email, role));
+    public UserProfileResponse getCurrentUser(String email) {
+        return UserProfileResponse.from(findUserByEmail(email));
     }
 
     @Transactional
-    public UserProfileResponse updateUser(String email, String role, UpdateUserRequest request) {
-        UserProfile user = getOrCreateUserProfile(email, role);
+    public UserProfileResponse updateUser(String email, UpdateUserRequest request) {
+        UserProfile user = findUserByEmail(email);
 
         if (request.getName() != null) {
             user.setName(request.getName());
@@ -81,17 +80,12 @@ public class UserService {
     public UserProfileResponse getUserById(Long id) {
         return userRepository.findById(id)
                 .map(UserProfileResponse::from)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    private UserProfile getOrCreateUserProfile(String email, String role) {
+    private UserProfile findUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(
-                        UserProfile.builder()
-                                .email(email)
-                                .role(role != null ? role : "STUDENT")
-                                .build()
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private void validateGraduationYear(Integer graduationYear) {

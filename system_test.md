@@ -99,6 +99,7 @@ Create an environment named `DECP Local`.
 - Registration only collects account credentials and display name: `email`, `password`, and `name`.
 - Richer profile fields are completed later using `PUT /users/me`. This keeps registration simple and avoids forcing profile completion before login.
 - User Service profile responses include basic fields plus optional rich profile fields: `bio`, `university`, `degree`, `graduationYear`, `skills`, `linkedinUrl`, `githubUrl`, and `profileImageUrl`.
+- `GET /users/me` and `PUT /users/me` do not auto-create missing profiles. If Auth-to-User profile sync did not create the profile, User Service returns `404 Not Found`.
 - Job post creation requires the full job detail payload: title, description, company, location, job type, work mode, salary range, application deadline, requirements, responsibilities, skills, and experience level.
 - `applicationDeadline` is informational in the current Job Service behavior; applying to jobs is still controlled by job `status`.
 - Job Service validates create-job roles internally from JWT claims, so direct `{{jobUrl}}/jobs` calls are also protected.
@@ -976,7 +977,7 @@ UPDATE users SET role = 'ADMIN' WHERE email = '{{adminEmail}}';
 
 **Notes**
 
-- If the profile does not exist, the service creates one with role `STUDENT`.
+- If the profile does not exist, User Service returns `404 Not Found`; it does not create a fallback `STUDENT` profile.
 
 ### U02 - Update Basic Profile Name
 

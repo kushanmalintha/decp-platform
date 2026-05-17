@@ -28,7 +28,7 @@ public class UserController {
     public UserProfileResponse getMyProfile(
             @RequestHeader("Authorization") String authHeader) {
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
-        return userService.getOrCreateUser(user.email(), user.role());
+        return userService.getCurrentUser(user.email());
     }
 
     @PutMapping("/me")
@@ -36,7 +36,7 @@ public class UserController {
             @RequestHeader("Authorization") String authHeader,
             @RequestBody UpdateUserRequest request) {
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
-        return userService.updateUser(user.email(), user.role(), request);
+        return userService.updateUser(user.email(), request);
     }
 
     @GetMapping("/{id}")
