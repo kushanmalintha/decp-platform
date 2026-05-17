@@ -107,6 +107,37 @@ public class AuthService {
         return new LogoutResponse("Logged out successfully");
     }
 
+    @Transactional
+    public LogoutResponse changePassword(String email, ChangePasswordRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password change request is required");
+        }
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is required");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password is required");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        revokeRefreshTokensForUser(user.getEmail());
+
+        log.info("Password changed and refresh tokens revoked userEmail={}", user.getEmail());
+        return new LogoutResponse("Password changed successfully. Please log in again.");
+    }
+
     public RoleAssignmentResponse assignRole(String requesterEmail, String targetEmail, String newRole) {
         // Validate the new role
         if (!isValidRole(newRole)) {
@@ -178,6 +209,11 @@ public class AuthService {
             refreshToken.setRevokedAt(LocalDateTime.now());
             refreshTokenRepository.save(refreshToken);
         }
+    }
+
+    private void revokeRefreshTokensForUser(String email) {
+        refreshTokenRepository.findByUserEmailAndRevokedFalse(email)
+                .forEach(this::revoke);
     }
 
     private String hashToken(String token) {

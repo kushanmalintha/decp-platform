@@ -37,6 +37,15 @@ public class AuthController {
         return authService.logout(request);
     }
 
+    @PutMapping("/me/password")
+    public LogoutResponse changePassword(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody ChangePasswordRequest request) {
+        String token = extractBearerToken(authHeader);
+        String email = jwtUtil.extractEmail(token);
+        return authService.changePassword(email, request);
+    }
+
     @PutMapping("/admin/role")
     public ResponseEntity<?> assignRole(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -95,5 +104,21 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(e.getMessage());
         }
+    }
+
+    private String extractBearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Missing or invalid Authorization header");
+        }
+
+        String token = authHeader.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid or expired token");
+        }
+        return token;
     }
 }

@@ -48,6 +48,7 @@ Create an environment named `DECP Local`.
 | `notificationUrl` | `http://localhost:8085` |
 | `studentEmail` | `student1@decp.local` |
 | `studentPassword` | `Password123!` |
+| `studentNewPassword` | `Password456!` |
 | `studentToken` | saved from login/refresh |
 | `studentRefreshToken` | saved from login/refresh |
 | `oldStudentRefreshToken` | saved before refresh rotation test |
@@ -118,6 +119,7 @@ Create an environment named `DECP Local`.
 | Auth | POST | `/auth/login` | `{email,password}` | `{accessToken,refreshToken,tokenType}` |
 | Auth | POST | `/auth/refresh` | `{refreshToken}` | `{accessToken,refreshToken,tokenType}` |
 | Auth | POST | `/auth/logout` | `{refreshToken}` | `{message}` |
+| Auth | PUT | `/auth/me/password` | `{currentPassword,newPassword}` | `{message}` |
 | Auth | PUT | `/auth/admin/role` | `{email,role}` | `{userId,email,role,message}` or text error |
 | User | POST | `/users/register` | `{email,name,role}` | `UserProfileResponse` |
 | User | GET | `/users/me` | none | `UserProfileResponse` |
@@ -150,7 +152,7 @@ Create an environment named `DECP Local`.
 | Notification | PATCH | `/notifications/{id}/read` | none | `NotificationResponse` |
 | Notification | PATCH | `/notifications/read-all` | none | `NotificationResponse[]` |
 
-Current endpoint count: 35.
+Current endpoint count: 36.
 
 ## 6. Role Matrix
 
@@ -952,6 +954,143 @@ UPDATE users SET role = 'ADMIN' WHERE email = '{{adminEmail}}';
 **Notes**
 
 - A second protected-role check can use `"role": "ADMIN"` and should return `400 Bad Request`.
+
+### A15 - Change Password With Wrong Current Password Fails
+
+**Service:** Auth Service
+
+**Purpose:** Validate current password verification.
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/auth/me/password`
+- Headers: `Authorization: Bearer {{studentToken}}`, `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "currentPassword": "WrongPassword123!",
+  "newPassword": "{{studentNewPassword}}"
+}
+```
+
+**Expected**
+
+- Status: `401 Unauthorized`
+- Body expectations: `message = Current password is incorrect`
+- Variables to save: none
+
+### A16 - Student Changes Password
+
+**Service:** Auth Service
+
+**Purpose:** Validate authenticated password change and refresh-token revocation.
+
+**Thunder Client Request**
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/auth/me/password`
+- Headers: `Authorization: Bearer {{studentToken}}`, `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "currentPassword": "{{studentPassword}}",
+  "newPassword": "{{studentNewPassword}}"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- Body expectations: `message = Password changed successfully. Please log in again.`
+- Variables to save: before running, copy current `studentRefreshToken` to `oldStudentRefreshToken`
+
+**Notes**
+
+- All active refresh tokens for the student are revoked. Existing access tokens remain stateless until expiry.
+
+### A17 - Old Password Login Fails After Password Change
+
+**Service:** Auth Service
+
+**Purpose:** Validate the old password no longer authenticates.
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/auth/login`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "email": "{{studentEmail}}",
+  "password": "{{studentPassword}}"
+}
+```
+
+**Expected**
+
+- Status: `400 Bad Request`
+- Body expectations: `message = Invalid password`
+- Variables to save: none
+
+### A18 - New Password Login Succeeds
+
+**Service:** Auth Service
+
+**Purpose:** Validate login with the changed password.
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/auth/login`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "email": "{{studentEmail}}",
+  "password": "{{studentNewPassword}}"
+}
+```
+
+**Expected**
+
+- Status: `200 OK`
+- Body expectations: `accessToken`, `refreshToken`, `tokenType = Bearer`
+- Variables to save: `studentToken = accessToken`, `studentRefreshToken = refreshToken`
+
+**Notes**
+
+- Later tests should use the new `studentToken`.
+
+### A19 - Refresh Token From Before Password Change Is Revoked
+
+**Service:** Auth Service
+
+**Purpose:** Validate password change revoked existing refresh tokens.
+
+**Thunder Client Request**
+
+- Method: `POST`
+- URL: `{{baseUrl}}/auth/refresh`
+- Headers: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "refreshToken": "{{oldStudentRefreshToken}}"
+}
+```
+
+**Expected**
+
+- Status: `401 Unauthorized`
+- Body expectations: `message = Refresh token has been revoked`
+- Variables to save: none
 
 ## 11. User Service Tests
 
@@ -3912,10 +4051,10 @@ https://mail.google.com/mail/?view=cm&fs=1&to=<email>
 
 | Section | Count |
 |---|---:|
-| Auth Service | 14 |
+| Auth Service | 19 |
 | User Service | 9 |
 | Job Service | 59 |
 | Feed Service | 23 |
 | Notification Service | 16 |
 | Cross-service Kafka | 4 |
-| Total | 125 |
+| Total | 130 |
