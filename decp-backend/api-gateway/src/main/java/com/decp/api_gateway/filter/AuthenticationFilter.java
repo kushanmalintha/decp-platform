@@ -29,6 +29,11 @@ public class AuthenticationFilter implements GlobalFilter {
         String path = exchange.getRequest().getURI().getPath();
         HttpMethod method = exchange.getRequest().getMethod();
 
+        // Allow CORS preflight requests without authentication
+        if (method == HttpMethod.OPTIONS) {
+            return chain.filter(exchange);
+        }
+
         // Allow auth endpoints without authentication
         if (path.startsWith("/auth")) {
             return chain.filter(exchange);
@@ -155,24 +160,24 @@ public class AuthenticationFilter implements GlobalFilter {
 
     /**
      * RBAC Authorization Logic
-     * 
+     *
      * Rules:
      * - Job Service:
      *   - POST /jobs → ALUMNI, ADMIN only
      *   - POST /jobs/{id}/apply → STUDENT only
      *   - Other methods → all authenticated users
-     * 
+     *
      * - Feed Service:
      *   - POST /feed/posts → STUDENT, ALUMNI only
      *   - GET /feed/** → all authenticated users
      *   - Other methods → all authenticated users
-     * 
+     *
      * - User Service:
      *   - GET /users/me → all authenticated users
      *   - PUT /users/me → all authenticated users
      *   - GET /users/{id} → ADMIN only
      *   - Other methods → all authenticated users
-     * 
+     *
      * - Default: allow access for all authenticated users
      */
     private boolean isAuthorized(String path, HttpMethod method, String role) {
