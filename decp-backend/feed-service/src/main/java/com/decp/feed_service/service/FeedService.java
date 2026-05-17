@@ -77,6 +77,12 @@ public class FeedService {
                 .map(feedMapper::toPostResponse);
     }
 
+    public PostResponse getPostById(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
+        return feedMapper.toPostResponse(post);
+    }
+
     public PostResponse updatePost(Long postId, UpdateFeedPostRequest request, String requesterEmail, String requesterRole) {
         log.info("Feed post update requested: postId={}, requesterEmail={}, requesterRole={}",
                 postId, requesterEmail, requesterRole);

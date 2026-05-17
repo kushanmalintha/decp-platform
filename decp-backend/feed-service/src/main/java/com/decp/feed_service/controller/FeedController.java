@@ -33,6 +33,11 @@ public class FeedController {
         return feedService.getAllPosts(pageable);
     }
 
+    @GetMapping("/posts/{id}")
+    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
+        return ResponseEntity.ok(feedService.getPostById(id));
+    }
+
     @PutMapping("/posts/{id}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,

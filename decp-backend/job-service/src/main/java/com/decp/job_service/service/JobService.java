@@ -134,6 +134,11 @@ public class JobService {
     }
 
     @Transactional(readOnly = true)
+    public JobResponse getJobById(Long jobId) {
+        return jobMapper.toJobResponse(findJob(jobId));
+    }
+
+    @Transactional(readOnly = true)
     public Page<JobResponse> getAllJobs(
             String keyword,
             JobStatus status,

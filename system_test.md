@@ -124,6 +124,7 @@ Create an environment named `DECP Local`.
 | User | GET | `/users/{id}` | none | `UserProfileResponse` |
 | Job | POST | `/jobs` | full `CreateJobRequest` | `JobResponse` |
 | Job | GET | `/jobs` | optional filters: `keyword`, `status`, `postedByEmail`, `jobType`, `workMode`, `location`, `experienceLevel` | Spring `Page<JobResponse>` |
+| Job | GET | `/jobs/{id}` | none | `JobResponse` |
 | Job | PUT | `/jobs/{id}` | full `UpdateJobRequest` | `JobResponse` |
 | Job | POST | `/jobs/{id}/save` | none | `JobResponse` |
 | Job | DELETE | `/jobs/{id}/save` | none | no body |
@@ -136,6 +137,7 @@ Create an environment named `DECP Local`.
 | Job | PATCH | `/jobs/applications/{id}/status` | `{status}` | `JobApplicationResponse` |
 | Feed | POST | `/feed/posts` | `{content}` | `{id,content,authorEmail,likes,createdAt,sourceType,sourceId}` |
 | Feed | GET | `/feed/posts` | query params | Spring `Page<PostResponse>` |
+| Feed | GET | `/feed/posts/{id}` | none | `PostResponse` |
 | Feed | PUT | `/feed/posts/{id}` | `{content}` | `PostResponse` |
 | Feed | DELETE | `/feed/posts/{id}` | none | no body |
 | Feed | POST | `/feed/posts/{id}/like` | none | `PostResponse` |
@@ -147,7 +149,7 @@ Create an environment named `DECP Local`.
 | Notification | PATCH | `/notifications/{id}/read` | none | `NotificationResponse` |
 | Notification | PATCH | `/notifications/read-all` | none | `NotificationResponse[]` |
 
-Current endpoint count: 33.
+Current endpoint count: 35.
 
 ## 6. Role Matrix
 
@@ -1404,6 +1406,48 @@ UPDATE users SET role = 'ADMIN' WHERE email = '{{adminEmail}}';
 **Notes**
 
 - `GET /jobs` is authenticated through the gateway.
+
+### J-Load-01 - Get Job By ID For Edit Prefill
+
+**Service:** Job Service
+
+**Purpose:** Load the previous job content before editing.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/{{jobId}}`
+- Headers: `Authorization: Bearer {{alumniToken}}`
+- Body: none
+
+**Expected**
+
+- Status: `200 OK`
+- Body expectations: `id = {{jobId}}`, `postedByEmail = {{alumniEmail}}`, response includes all job detail fields needed by `PUT /jobs/{id}`
+- Variables to save: none
+
+**Notes**
+
+- Frontend should prefill the edit form from this response before calling `PUT /jobs/{{jobId}}`.
+
+### J-Load-02 - Missing Job By ID Returns 404
+
+**Service:** Job Service
+
+**Purpose:** Validate missing job detail lookup.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/jobs/{{missingId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+- Body: none
+
+**Expected**
+
+- Status: `404 Not Found`
+- Body expectations: `message = Job not found with id: {{missingId}}`
+- Variables to save: none
 
 ### J-Update-01 - Owning Alumni Updates Job
 
@@ -2866,6 +2910,71 @@ UPDATE users SET role = 'ADMIN' WHERE email = '{{adminEmail}}';
 
 - Old posts with null `sourceType` are treated as `MANUAL` in API responses.
 
+### F-Load-01 - Get Manual Feed Post By ID For Edit Prefill
+
+**Service:** Feed Service
+
+**Purpose:** Load previous manual feed content before editing.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/feed/posts/{{manualPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+- Body: none
+
+**Expected**
+
+- Status: `200 OK`
+- Body expectations: `id = {{manualPostId}}`, `sourceType = MANUAL`, `sourceId = null`, response includes current `content`
+- Variables to save: none
+
+**Notes**
+
+- Frontend should prefill the manual post edit textarea from this response before calling `PUT /feed/posts/{{manualPostId}}`.
+
+### F-Load-02 - Get Job-Generated Feed Post Points To Job
+
+**Service:** Feed Service
+
+**Purpose:** Validate frontend can detect job-generated posts and redirect to job edit.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/feed/posts/{{jobGeneratedPostId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+- Body: none
+
+**Expected**
+
+- Status: `200 OK`
+- Body expectations: `id = {{jobGeneratedPostId}}`, `sourceType = JOB`, `sourceId = {{jobId}}`
+- Variables to save: none
+
+**Notes**
+
+- If `sourceType = JOB`, frontend should load `GET /jobs/{{sourceId}}` and update through `PUT /jobs/{{sourceId}}`.
+
+### F-Load-03 - Missing Feed Post By ID Returns 404
+
+**Service:** Feed Service
+
+**Purpose:** Validate missing feed post detail lookup.
+
+**Thunder Client Request**
+
+- Method: `GET`
+- URL: `{{baseUrl}}/feed/posts/{{missingId}}`
+- Headers: `Authorization: Bearer {{studentToken}}`
+- Body: none
+
+**Expected**
+
+- Status: `404 Not Found`
+- Body expectations: message/reason `Post not found with id: {{missingId}}`
+- Variables to save: none
+
 ### F-Update-01 - Job Update Updates Existing Feed Post
 
 **Service:** Feed Service
@@ -3804,8 +3913,8 @@ https://mail.google.com/mail/?view=cm&fs=1&to=<email>
 |---|---:|
 | Auth Service | 14 |
 | User Service | 9 |
-| Job Service | 57 |
-| Feed Service | 20 |
+| Job Service | 59 |
+| Feed Service | 23 |
 | Notification Service | 16 |
 | Cross-service Kafka | 4 |
-| Total | 120 |
+| Total | 125 |
