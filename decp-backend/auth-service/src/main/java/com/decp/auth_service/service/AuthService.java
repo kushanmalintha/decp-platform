@@ -2,8 +2,10 @@ package com.decp.auth_service.service;
 
 import com.decp.auth_service.client.UserServiceClient;
 import com.decp.auth_service.dto.*;
+import com.decp.auth_service.entity.PasswordResetToken;
 import com.decp.auth_service.entity.RefreshToken;
 import com.decp.auth_service.entity.User;
+import com.decp.auth_service.repository.PasswordResetTokenRepository;
 import com.decp.auth_service.repository.RefreshTokenRepository;
 import com.decp.auth_service.repository.UserRepository;
 import com.decp.auth_service.security.JwtUtil;
@@ -19,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -30,14 +33,23 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UserServiceClient userServiceClient;
+    private final EmailService emailService;
     private static final String[] ALLOWED_ROLES = {"STUDENT", "ALUMNI", "ADMIN"};
     private static final String TOKEN_TYPE = "Bearer";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${jwt.refresh-token-expiration-ms:604800000}")
     private long refreshTokenExpirationMs;
+
+    @Value("${password-reset.token-expiration-ms:900000}")
+    private long passwordResetTokenExpirationMs;
+
+    @Value("${app.frontend-reset-url:http://localhost:3000/reset-password}")
+    private String frontendResetUrl;
 
     @Transactional
     public void register(RegisterRequest request) {
@@ -138,6 +150,81 @@ public class AuthService {
         return new LogoutResponse("Password changed successfully. Please log in again.");
     }
 
+    @Transactional
+    public LogoutResponse forgotPassword(ForgotPasswordRequest request) {
+        if (request == null || request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
+        }
+
+        String email = request.getEmail().trim();
+        userRepository.findByEmail(email).ifPresent(user -> {
+            LocalDateTime now = LocalDateTime.now();
+            passwordResetTokenRepository.findByUserEmailAndUsedAtIsNull(user.getEmail())
+                    .forEach(existingToken -> {
+                        existingToken.setUsedAt(now);
+                        passwordResetTokenRepository.save(existingToken);
+                    });
+
+            String rawToken = generateSecureToken();
+            passwordResetTokenRepository.save(PasswordResetToken.builder()
+                    .tokenHash(hashToken(rawToken))
+                    .userEmail(user.getEmail())
+                    .expiresAt(now.plus(Duration.ofMillis(passwordResetTokenExpirationMs)))
+                    .createdAt(now)
+                    .build());
+
+            String resetLink = buildResetLink(rawToken);
+            emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+            log.info("Password reset email sent userEmail={}", user.getEmail());
+        });
+
+        return new LogoutResponse("If an account exists for this email, a reset link has been sent.");
+    }
+
+    @Transactional
+    public LogoutResponse resetPassword(ResetPasswordRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password reset request is required");
+        }
+        if (request.getToken() == null || request.getToken().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reset token is required");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password is required");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenHashAndUsedAtIsNull(hashToken(request.getToken()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired reset token"));
+
+        LocalDateTime now = LocalDateTime.now();
+        if (resetToken.getExpiresAt().isBefore(now)) {
+            resetToken.setUsedAt(now);
+            passwordResetTokenRepository.save(resetToken);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired reset token");
+        }
+
+        User user = userRepository.findByEmail(resetToken.getUserEmail())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired reset token"));
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        passwordResetTokenRepository.findByUserEmailAndUsedAtIsNull(user.getEmail())
+                .forEach(existingToken -> {
+                    existingToken.setUsedAt(now);
+                    passwordResetTokenRepository.save(existingToken);
+                });
+        revokeRefreshTokensForUser(user.getEmail());
+
+        log.info("Password reset completed and refresh tokens revoked userEmail={}", user.getEmail());
+        return new LogoutResponse("Password reset successfully. Please log in again.");
+    }
+
     public RoleAssignmentResponse assignRole(String requesterEmail, String targetEmail, String newRole) {
         // Validate the new role
         if (!isValidRole(newRole)) {
@@ -214,6 +301,17 @@ public class AuthService {
     private void revokeRefreshTokensForUser(String email) {
         refreshTokenRepository.findByUserEmailAndRevokedFalse(email)
                 .forEach(this::revoke);
+    }
+
+    private String generateSecureToken() {
+        byte[] tokenBytes = new byte[32];
+        SECURE_RANDOM.nextBytes(tokenBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+    }
+
+    private String buildResetLink(String token) {
+        String separator = frontendResetUrl.contains("?") ? "&" : "?";
+        return frontendResetUrl + separator + "token=" + token;
     }
 
     private String hashToken(String token) {

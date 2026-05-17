@@ -46,6 +46,16 @@ public class AuthController {
         return authService.changePassword(email, request);
     }
 
+    @PostMapping("/forgot-password")
+    public LogoutResponse forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        return authService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    public LogoutResponse resetPassword(@RequestBody ResetPasswordRequest request) {
+        return authService.resetPassword(request);
+    }
+
     @PutMapping("/admin/role")
     public ResponseEntity<?> assignRole(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
