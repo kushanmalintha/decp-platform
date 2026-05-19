@@ -5,6 +5,8 @@ import MainLayout from "../layouts/MainLayout";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Dashboard from "../pages/dashboard/Dashboard";
+import JobDetails from "../pages/jobs/JobDetails";
+import JobList from "../pages/jobs/JobList";
 import EditProfile from "../pages/profile/EditProfile";
 import MyProfile from "../pages/profile/MyProfile";
 
@@ -22,6 +24,8 @@ const AppRoutes = () => (
       }
     >
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/jobs" element={<JobList />} />
+      <Route path="/jobs/:id" element={<JobDetails />} />
       <Route path="/profile" element={<MyProfile />} />
       <Route path="/profile/edit" element={<EditProfile />} />
     </Route>

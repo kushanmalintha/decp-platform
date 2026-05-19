@@ -18,6 +18,7 @@ const MainLayout = () => {
         <div className="brand">DECP Platform</div>
         <nav className="sidebar-nav" aria-label="Primary navigation">
           <NavLink to="/dashboard">Dashboard</NavLink>
+          <NavLink to="/jobs">Jobs</NavLink>
           <NavLink to="/profile">Profile</NavLink>
         </nav>
       </aside>
