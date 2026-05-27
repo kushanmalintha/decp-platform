@@ -4,8 +4,10 @@ import { useAuth } from "./useAuth";
 
 const RoleRoute = ({ allowedRoles = [], children }) => {
   const { user } = useAuth();
+  const normalizedRole = user?.role?.toUpperCase();
+  const normalizedAllowedRoles = allowedRoles.map((role) => role.toUpperCase());
 
-  if (!allowedRoles.includes(user?.role)) {
+  if (!normalizedAllowedRoles.includes(normalizedRole)) {
     return <Navigate to="/dashboard" replace />;
   }
 

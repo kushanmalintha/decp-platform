@@ -23,3 +23,31 @@ export const getJobById = async (id) => {
   const response = await axiosClient.get(`/jobs/${id}`);
   return unwrapResponse(response);
 };
+
+export const saveJob = async (id) => {
+  const response = await axiosClient.post(`/jobs/${id}/save`);
+  return unwrapResponse(response);
+};
+
+export const unsaveJob = async (id) => {
+  const response = await axiosClient.delete(`/jobs/${id}/save`);
+  return unwrapResponse(response);
+};
+
+export const getSavedJobs = async (params = {}) => {
+  const response = await axiosClient.get("/jobs/saved", {
+    params: compactParams(params),
+  });
+
+  return unwrapResponse(response);
+};
+
+export const applyToJob = async (id) => {
+  const response = await axiosClient.post(`/jobs/${id}/apply`);
+  return unwrapResponse(response);
+};
+
+export const getMyApplications = async () => {
+  const response = await axiosClient.get("/jobs/applications/me");
+  return unwrapResponse(response);
+};

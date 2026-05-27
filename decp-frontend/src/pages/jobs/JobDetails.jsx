@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getJobById } from "../../api/jobApi";
+import { getJobById, getSavedJobs } from "../../api/jobApi";
+import { useAuth } from "../../auth/useAuth";
+import JobActions from "../../components/jobs/JobActions";
 import JobStatusBadge from "../../components/jobs/JobStatusBadge";
 import { JOB_OPTION_LABELS } from "../../constants/jobOptions";
 import "./Jobs.css";
@@ -71,7 +73,9 @@ const renderLongValue = (value) => {
 
 const JobDetails = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [job, setJob] = useState(null);
+  const [isSaved, setIsSaved] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -114,6 +118,37 @@ const JobDetails = () => {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedState = async () => {
+      if (user?.role?.toUpperCase() !== "STUDENT" || !id) {
+        setIsSaved(null);
+        return;
+      }
+
+      try {
+        const savedJobsData = await getSavedJobs({ page: 0, size: 1000 });
+        const savedJobs = Array.isArray(savedJobsData) ? savedJobsData : savedJobsData?.content ?? [];
+        const currentJobId = Number(id);
+
+        if (isMounted) {
+          setIsSaved(savedJobs.some((savedJob) => Number(savedJob.id) === currentJobId));
+        }
+      } catch {
+        if (isMounted) {
+          setIsSaved(null);
+        }
+      }
+    };
+
+    loadSavedState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, user?.role]);
 
   const skills = useMemo(() => normalizeList(job?.skillsRequired), [job?.skillsRequired]);
 
@@ -174,6 +209,14 @@ const JobDetails = () => {
           <JobStatusBadge status={job?.status} />
           <span>Posted {formatDate(job?.createdAt)}</span>
         </div>
+
+        <JobActions
+          key={`${job?.id}-${isSaved}`}
+          jobId={job?.id}
+          jobStatus={job?.status}
+          initialSaved={isSaved}
+          onSaveChange={setIsSaved}
+        />
 
         <dl className="job-details__grid">
           <div>

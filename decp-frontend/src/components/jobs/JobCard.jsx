@@ -29,7 +29,7 @@ const formatValue = (value) => {
   return JOB_OPTION_LABELS[value] ?? value;
 };
 
-const JobCard = ({ job }) => (
+const JobCard = ({ job, children }) => (
   <article className="job-card">
     <div className="job-card__header">
       <div>
@@ -67,6 +67,8 @@ const JobCard = ({ job }) => (
         <dd>{formatDate(job.createdAt)}</dd>
       </div>
     </dl>
+
+    {children}
   </article>
 );
 

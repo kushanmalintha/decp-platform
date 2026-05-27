@@ -6,6 +6,7 @@ import "./MainLayout.css";
 const MainLayout = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const isStudent = user?.role?.toUpperCase() === "STUDENT";
 
   const handleLogout = async () => {
     await logout();
@@ -19,6 +20,8 @@ const MainLayout = () => {
         <nav className="sidebar-nav" aria-label="Primary navigation">
           <NavLink to="/dashboard">Dashboard</NavLink>
           <NavLink to="/jobs">Jobs</NavLink>
+          {isStudent && <NavLink to="/jobs/saved">Saved Jobs</NavLink>}
+          {isStudent && <NavLink to="/applications/me">My Applications</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
         </nav>
       </aside>
