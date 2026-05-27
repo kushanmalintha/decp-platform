@@ -1,14 +1,8 @@
-const APPLICATION_STATUS_LABELS = {
-  APPLIED: "Applied",
-  REVIEWING: "Reviewing",
-  SHORTLISTED: "Shortlisted",
-  REJECTED: "Rejected",
-  ACCEPTED: "Accepted",
-};
+import { JOB_OPTION_LABELS } from "../../constants/jobOptions";
 
 const ApplicationStatusBadge = ({ status }) => {
   const normalizedStatus = status || "UNKNOWN";
-  const label = APPLICATION_STATUS_LABELS[normalizedStatus] ?? normalizedStatus;
+  const label = JOB_OPTION_LABELS[normalizedStatus] ?? normalizedStatus;
 
   return (
     <span className={`application-status-badge application-status-badge--${normalizedStatus.toLowerCase()}`}>

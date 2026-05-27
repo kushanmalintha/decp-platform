@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getJobById, getSavedJobs } from "../../api/jobApi";
+import { closeJob, getJobById, getSavedJobs } from "../../api/jobApi";
 import { useAuth } from "../../auth/useAuth";
 import JobActions from "../../components/jobs/JobActions";
 import JobStatusBadge from "../../components/jobs/JobStatusBadge";
@@ -9,6 +9,18 @@ import { JOB_OPTION_LABELS } from "../../constants/jobOptions";
 import "./Jobs.css";
 
 const getErrorMessage = (error, fallback) => error.response?.data?.message ?? error.message ?? fallback;
+
+const getCloseErrorMessage = (error) => {
+  if (error.response?.status === 403) {
+    return "You do not have permission to close this job.";
+  }
+
+  if (error.response?.status === 404) {
+    return "This job could not be found.";
+  }
+
+  return error.response?.data?.message ?? error.message ?? "Unable to close this job.";
+};
 
 const formatDate = (value) => {
   if (!value) {
@@ -77,6 +89,8 @@ const JobDetails = () => {
   const [job, setJob] = useState(null);
   const [isSaved, setIsSaved] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [closing, setClosing] = useState(false);
+  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
 
@@ -151,6 +165,35 @@ const JobDetails = () => {
   }, [id, user?.role]);
 
   const skills = useMemo(() => normalizeList(job?.skillsRequired), [job?.skillsRequired]);
+  const normalizedRole = user?.role?.toUpperCase();
+  const isStudent = normalizedRole === "STUDENT";
+  const isAlumni = normalizedRole === "ALUMNI";
+  const isAdmin = normalizedRole === "ADMIN";
+  const isClosed = job?.status === "CLOSED";
+  const canManageJob = (isAlumni || isAdmin) && job?.id;
+  const showEditJob = canManageJob && !isClosed;
+  const showCloseJob = canManageJob && !isClosed;
+  const showApplications = isAlumni && job?.id;
+
+  const handleCloseJob = async () => {
+    setClosing(true);
+    setSuccess("");
+    setError("");
+
+    try {
+      const closedJob = await closeJob(job.id);
+      setJob((currentJob) => ({
+        ...currentJob,
+        ...closedJob,
+        status: closedJob?.status ?? "CLOSED",
+      }));
+      setSuccess("Job closed successfully.");
+    } catch (closeError) {
+      setError(getCloseErrorMessage(closeError));
+    } finally {
+      setClosing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -176,7 +219,7 @@ const JobDetails = () => {
     );
   }
 
-  if (error) {
+  if (error && !job) {
     return (
       <section className="jobs-page">
         <div className="jobs-page__header">
@@ -199,24 +242,47 @@ const JobDetails = () => {
           <h1>{formatValue(job?.title)}</h1>
           <p>{formatValue(job?.companyName)}</p>
         </div>
-        <Link className="job-button job-button--secondary" to="/jobs">
-          Back to Jobs
-        </Link>
+        <div className="job-management-actions">
+          {showEditJob && (
+            <Link className="job-button job-button--secondary" to={`/jobs/${job.id}/edit`}>
+              Edit Job
+            </Link>
+          )}
+          {showApplications && (
+            <Link className="job-button job-button--secondary" to={`/jobs/${job.id}/applications`}>
+              View Applications
+            </Link>
+          )}
+          {showCloseJob && (
+            <button type="button" onClick={handleCloseJob} disabled={closing}>
+              {closing ? "Closing..." : "Close Job"}
+            </button>
+          )}
+          <Link className="job-button job-button--secondary" to="/jobs">
+            Back to Jobs
+          </Link>
+        </div>
       </div>
 
       <article className="job-details">
         <div className="job-details__topline">
           <JobStatusBadge status={job?.status} />
           <span>Posted {formatDate(job?.createdAt)}</span>
+          {isClosed && <span className="job-actions__note">This job is closed.</span>}
         </div>
 
-        <JobActions
-          key={`${job?.id}-${isSaved}`}
-          jobId={job?.id}
-          jobStatus={job?.status}
-          initialSaved={isSaved}
-          onSaveChange={setIsSaved}
-        />
+        {success && <div className="form-success">{success}</div>}
+        {error && <div className="form-error">{error}</div>}
+
+        {isStudent && (
+          <JobActions
+            key={`${job?.id}-${isSaved}`}
+            jobId={job?.id}
+            jobStatus={job?.status}
+            initialSaved={isSaved}
+            onSaveChange={setIsSaved}
+          />
+        )}
 
         <dl className="job-details__grid">
           <div>

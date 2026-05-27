@@ -22,12 +22,31 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
   { value: "SENIOR", label: "Senior" },
 ];
 
+export const APPLICATION_STATUS_OPTIONS = [
+  { value: "APPLIED", label: "Applied" },
+  { value: "REVIEWING", label: "Reviewing" },
+  { value: "SHORTLISTED", label: "Shortlisted" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "ACCEPTED", label: "Accepted" },
+];
+
+export const APPLICATION_STATUS_TRANSITIONS = {
+  APPLIED: ["REVIEWING"],
+  REVIEWING: ["SHORTLISTED", "REJECTED"],
+  SHORTLISTED: ["ACCEPTED", "REJECTED"],
+  REJECTED: [],
+  ACCEPTED: [],
+};
+
 export const JOB_OPTION_LABELS = [
   ...JOB_STATUS_OPTIONS,
   ...JOB_TYPE_OPTIONS,
   ...WORK_MODE_OPTIONS,
   ...EXPERIENCE_LEVEL_OPTIONS,
+  ...APPLICATION_STATUS_OPTIONS,
 ].reduce((labels, option) => ({ ...labels, [option.value]: option.label }), {});
+
+export const getNextApplicationStatuses = (status) => APPLICATION_STATUS_TRANSITIONS[status] ?? [];
 
 export const DEFAULT_JOB_QUERY = {
   page: 0,

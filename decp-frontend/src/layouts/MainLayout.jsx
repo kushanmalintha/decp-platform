@@ -6,7 +6,11 @@ import "./MainLayout.css";
 const MainLayout = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const isStudent = user?.role?.toUpperCase() === "STUDENT";
+  const normalizedRole = user?.role?.toUpperCase();
+  const isStudent = normalizedRole === "STUDENT";
+  const isAlumni = normalizedRole === "ALUMNI";
+  const isAdmin = normalizedRole === "ADMIN";
+  const canCreateJob = isAlumni || isAdmin;
 
   const handleLogout = async () => {
     await logout();
@@ -20,6 +24,8 @@ const MainLayout = () => {
         <nav className="sidebar-nav" aria-label="Primary navigation">
           <NavLink to="/dashboard">Dashboard</NavLink>
           <NavLink to="/jobs">Jobs</NavLink>
+          {canCreateJob && <NavLink to="/jobs/create">Create Job</NavLink>}
+          {isAlumni && <NavLink to="/recruiter/dashboard">Recruiter Dashboard</NavLink>}
           {isStudent && <NavLink to="/jobs/saved">Saved Jobs</NavLink>}
           {isStudent && <NavLink to="/applications/me">My Applications</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
