@@ -16,6 +16,7 @@ import JobList from "../pages/jobs/JobList";
 import MyApplications from "../pages/jobs/MyApplications";
 import RecruiterDashboard from "../pages/jobs/RecruiterDashboard";
 import SavedJobs from "../pages/jobs/SavedJobs";
+import Notifications from "../pages/notifications/Notifications";
 import EditProfile from "../pages/profile/EditProfile";
 import MyProfile from "../pages/profile/MyProfile";
 
@@ -35,6 +36,7 @@ const AppRoutes = () => (
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/feed" element={<Feed />} />
       <Route path="/feed/posts/:id" element={<PostDetails />} />
+      <Route path="/notifications" element={<Notifications />} />
       <Route path="/jobs" element={<JobList />} />
       <Route
         path="/jobs/create"

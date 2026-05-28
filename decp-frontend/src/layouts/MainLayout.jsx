@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
+import NotificationBadge from "../components/notifications/NotificationBadge";
+import NotificationDropdown from "../components/notifications/NotificationDropdown";
 import "./MainLayout.css";
 
 const MainLayout = () => {
@@ -25,6 +27,10 @@ const MainLayout = () => {
           <NavLink to="/dashboard">Dashboard</NavLink>
           <NavLink to="/feed">Feed</NavLink>
           <NavLink to="/jobs">Jobs</NavLink>
+          <NavLink className="sidebar-nav__notification-link" to="/notifications">
+            <span>Notifications</span>
+            <NotificationBadge compact />
+          </NavLink>
           {canCreateJob && <NavLink to="/jobs/create">Create Job</NavLink>}
           {isAlumni && <NavLink to="/recruiter/dashboard">Recruiter Dashboard</NavLink>}
           {isStudent && <NavLink to="/jobs/saved">Saved Jobs</NavLink>}
@@ -39,9 +45,12 @@ const MainLayout = () => {
             <p className="user-email">{user?.email}</p>
             <p className="user-role">{user?.role}</p>
           </div>
-          <button type="button" onClick={handleLogout}>
-            Logout
-          </button>
+          <div className="topbar-actions">
+            <NotificationDropdown />
+            <button type="button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
         </header>
 
         <main className="content">
