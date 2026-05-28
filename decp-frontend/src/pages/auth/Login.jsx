@@ -11,6 +11,8 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname ?? "/dashboard";
+  const statusMessage = location.state?.message;
+  const statusClassName = location.state?.sessionExpired ? "form-error" : "form-success";
 
   const {
     register,
@@ -42,6 +44,7 @@ const Login = () => {
           <p>Sign in to continue to the DECP Platform.</p>
         </div>
 
+        {statusMessage && !serverError && <div className={statusClassName}>{statusMessage}</div>}
         {serverError && <div className="form-error">{serverError}</div>}
 
         <label>

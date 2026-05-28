@@ -19,3 +19,37 @@ export const clearTokens = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
+
+export const decodeTokenSafely = (token) => {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const [, payload] = token.split(".");
+
+    if (!payload) {
+      return null;
+    }
+
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+
+    return JSON.parse(atob(paddedPayload));
+  } catch {
+    return null;
+  }
+};
+
+export const isTokenExpired = (token) => {
+  const decoded = decodeTokenSafely(token);
+
+  if (!decoded?.exp) {
+    return true;
+  }
+
+  return decoded.exp * 1000 <= Date.now();
+};

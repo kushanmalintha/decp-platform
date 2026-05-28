@@ -1,38 +1,43 @@
-import { useCallback, useMemo, useState } from "react";
-import { jwtDecode } from "jwt-decode";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { login as loginRequest, logout as logoutRequest } from "../api/authApi";
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "../utils/tokenUtils";
+import {
+  AUTH_SESSION_EXPIRED_EVENT,
+  AUTH_TOKENS_REFRESHED_EVENT,
+} from "../api/axiosClient";
+import {
+  login as loginRequest,
+  logout as logoutRequest,
+  refreshToken as refreshTokenRequest,
+} from "../api/authApi";
+import {
+  clearTokens,
+  decodeTokenSafely,
+  getAccessToken,
+  getRefreshToken,
+  isTokenExpired,
+  saveTokens,
+} from "../utils/tokenUtils";
 import { AuthContext } from "./authContext";
 
 const decodeUser = (token) => {
-  if (!token) {
+  const decoded = decodeTokenSafely(token);
+
+  if (!decoded || isTokenExpired(token)) {
     return null;
   }
 
-  try {
-    const decoded = jwtDecode(token);
+  const roleClaim = decoded.role ?? decoded.roles ?? decoded.authorities;
+  const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
+  const normalizedRole =
+    typeof role === "string" && role.toUpperCase().startsWith("ROLE_")
+      ? role.slice("ROLE_".length)
+      : role;
 
-    if (decoded.exp && decoded.exp * 1000 <= Date.now()) {
-      clearTokens();
-      return null;
-    }
-
-    const roleClaim = decoded.role ?? decoded.roles ?? decoded.authorities;
-    const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
-    const normalizedRole =
-      typeof role === "string" && role.toUpperCase().startsWith("ROLE_")
-        ? role.slice("ROLE_".length)
-        : role;
-
-    return {
-      email: decoded.email ?? decoded.sub ?? "",
-      role: normalizedRole ?? "",
-    };
-  } catch {
-    clearTokens();
-    return null;
-  }
+  return {
+    email: decoded.email ?? decoded.sub ?? "",
+    role: normalizedRole ?? "",
+  };
 };
 
 const extractTokens = (responseData) => {
@@ -44,19 +49,128 @@ const extractTokens = (responseData) => {
   };
 };
 
-const getInitialAuthState = () => {
-  const storedAccessToken = getAccessToken();
-  const restoredUser = decodeUser(storedAccessToken);
+let startupRefreshPromise = null;
 
-  return {
-    user: restoredUser,
-    accessToken: restoredUser ? storedAccessToken : null,
-  };
+const refreshTokensOnce = (refreshToken) => {
+  if (!startupRefreshPromise) {
+    startupRefreshPromise = refreshTokenRequest(refreshToken).finally(() => {
+      startupRefreshPromise = null;
+    });
+  }
+
+  return startupRefreshPromise;
 };
 
 export const AuthProvider = ({ children }) => {
-  const [authState, setAuthState] = useState(getInitialAuthState);
-  const loading = false;
+  const [authState, setAuthState] = useState({
+    user: null,
+    accessToken: null,
+  });
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const clearSession = useCallback(() => {
+    clearTokens();
+    setAuthState({
+      accessToken: null,
+      user: null,
+    });
+  }, []);
+
+  const applyAccessToken = useCallback((accessToken) => {
+    const user = decodeUser(accessToken);
+
+    if (!accessToken || !user) {
+      clearTokens();
+      setAuthState({
+        accessToken: null,
+        user: null,
+      });
+      return false;
+    }
+
+    setAuthState({
+      accessToken,
+      user,
+    });
+    return true;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      const accessToken = getAccessToken();
+      const refreshToken = getRefreshToken();
+
+      try {
+        if (accessToken && !isTokenExpired(accessToken)) {
+          const user = decodeUser(accessToken);
+
+          if (user && isMounted) {
+            setAuthState({ accessToken, user });
+            return;
+          }
+        }
+
+        if (accessToken && refreshToken && isTokenExpired(accessToken)) {
+          const response = await refreshTokensOnce(refreshToken);
+          const tokens = extractTokens(response.data);
+
+          if (!tokens.accessToken || !tokens.refreshToken) {
+            throw new Error("Refresh response did not include new tokens.");
+          }
+
+          saveTokens(tokens.accessToken, tokens.refreshToken);
+
+          if (isMounted) {
+            applyAccessToken(tokens.accessToken);
+          }
+          return;
+        }
+
+        clearTokens();
+      } catch {
+        clearTokens();
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [applyAccessToken]);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearSession();
+      navigate("/login", {
+        replace: true,
+        state: {
+          sessionExpired: true,
+          message: "Your session has expired. Please log in again.",
+        },
+      });
+    };
+
+    const handleTokensRefreshed = (event) => {
+      const accessToken = event.detail?.accessToken ?? getAccessToken();
+      applyAccessToken(accessToken);
+    };
+
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    window.addEventListener(AUTH_TOKENS_REFRESHED_EVENT, handleTokensRefreshed);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+      window.removeEventListener(AUTH_TOKENS_REFRESHED_EVENT, handleTokensRefreshed);
+    };
+  }, [applyAccessToken, clearSession, navigate]);
 
   const login = useCallback(async (credentials) => {
     const response = await loginRequest(credentials);
@@ -83,13 +197,9 @@ export const AuthProvider = ({ children }) => {
         await logoutRequest(refreshToken);
       }
     } finally {
-      clearTokens();
-      setAuthState({
-        accessToken: null,
-        user: null,
-      });
+      clearSession();
     }
-  }, []);
+  }, [clearSession]);
 
   const value = useMemo(
     () => ({
@@ -97,10 +207,11 @@ export const AuthProvider = ({ children }) => {
       accessToken: authState.accessToken,
       isAuthenticated: Boolean(authState.accessToken && authState.user),
       loading,
+      clearSession,
       login,
       logout,
     }),
-    [authState.accessToken, authState.user, loading, login, logout],
+    [authState.accessToken, authState.user, clearSession, loading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

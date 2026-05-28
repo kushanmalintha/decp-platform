@@ -36,6 +36,7 @@ const MainLayout = () => {
           {isStudent && <NavLink to="/jobs/saved">Saved Jobs</NavLink>}
           {isStudent && <NavLink to="/applications/me">My Applications</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
+          <NavLink to="/settings/change-password">Change Password</NavLink>
         </nav>
       </aside>
 

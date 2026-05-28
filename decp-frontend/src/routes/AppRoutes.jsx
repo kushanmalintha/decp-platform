@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import RoleRoute from "../auth/RoleRoute";
 import MainLayout from "../layouts/MainLayout";
+import ChangePassword from "../pages/auth/ChangePassword";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -89,6 +90,7 @@ const AppRoutes = () => (
       />
       <Route path="/profile" element={<MyProfile />} />
       <Route path="/profile/edit" element={<EditProfile />} />
+      <Route path="/settings/change-password" element={<ChangePassword />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
