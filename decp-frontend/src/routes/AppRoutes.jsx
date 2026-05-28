@@ -6,6 +6,8 @@ import MainLayout from "../layouts/MainLayout";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Dashboard from "../pages/dashboard/Dashboard";
+import Feed from "../pages/feed/Feed";
+import PostDetails from "../pages/feed/PostDetails";
 import CreateJob from "../pages/jobs/CreateJob";
 import EditJob from "../pages/jobs/EditJob";
 import JobApplications from "../pages/jobs/JobApplications";
@@ -31,6 +33,8 @@ const AppRoutes = () => (
       }
     >
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/feed" element={<Feed />} />
+      <Route path="/feed/posts/:id" element={<PostDetails />} />
       <Route path="/jobs" element={<JobList />} />
       <Route
         path="/jobs/create"

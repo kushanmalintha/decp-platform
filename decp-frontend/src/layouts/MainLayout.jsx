@@ -23,6 +23,7 @@ const MainLayout = () => {
         <div className="brand">DECP Platform</div>
         <nav className="sidebar-nav" aria-label="Primary navigation">
           <NavLink to="/dashboard">Dashboard</NavLink>
+          <NavLink to="/feed">Feed</NavLink>
           <NavLink to="/jobs">Jobs</NavLink>
           {canCreateJob && <NavLink to="/jobs/create">Create Job</NavLink>}
           {isAlumni && <NavLink to="/recruiter/dashboard">Recruiter Dashboard</NavLink>}
