@@ -11,3 +11,5 @@ export const logout = (refreshTokenValue) =>
   axiosClient.post("/auth/logout", { refreshToken: refreshTokenValue });
 
 export const changePassword = (data) => axiosClient.put("/auth/me/password", data);
+
+export const assignUserRole = (data) => axiosClient.put("/auth/admin/role", data);

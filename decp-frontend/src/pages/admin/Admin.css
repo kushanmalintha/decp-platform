@@ -1,0 +1,75 @@
+.admin-page {
+  display: grid;
+  max-width: 660px;
+  gap: 18px;
+}
+
+.admin-page__header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.admin-page__header p {
+  margin: 6px 0 0;
+  color: #667085;
+}
+
+.admin-note {
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  padding: 12px 14px;
+  line-height: 1.5;
+}
+
+.admin-role-form {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.admin-role-form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.admin-role-form input,
+.admin-role-form select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #c8d0df;
+  border-radius: 6px;
+  background: #ffffff;
+  font: inherit;
+  padding: 0 12px;
+}
+
+.admin-role-form select {
+  cursor: pointer;
+}
+
+.admin-role-form .form-success {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-role-form .form-success span {
+  font-size: 14px;
+}
+
+.admin-role-form__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 560px) {
+  .admin-role-form__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
