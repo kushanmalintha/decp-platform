@@ -6,9 +6,10 @@ import { useAuth } from "../../auth/useAuth";
 import JobActions from "../../components/jobs/JobActions";
 import JobStatusBadge from "../../components/jobs/JobStatusBadge";
 import { JOB_OPTION_LABELS } from "../../constants/jobOptions";
+import { getApiErrorMessage } from "../../utils/apiError";
 import "./Jobs.css";
 
-const getErrorMessage = (error, fallback) => error.response?.data?.message ?? error.message ?? fallback;
+const getErrorMessage = (error, fallback) => getApiErrorMessage(error, fallback);
 
 const getCloseErrorMessage = (error) => {
   if (error.response?.status === 403) {
@@ -19,7 +20,7 @@ const getCloseErrorMessage = (error) => {
     return "This job could not be found.";
   }
 
-  return error.response?.data?.message ?? error.message ?? "Unable to close this job.";
+  return getApiErrorMessage(error, "Unable to close this job.");
 };
 
 const formatDate = (value) => {
@@ -170,10 +171,11 @@ const JobDetails = () => {
   const isAlumni = normalizedRole === "ALUMNI";
   const isAdmin = normalizedRole === "ADMIN";
   const isClosed = job?.status === "CLOSED";
-  const canManageJob = (isAlumni || isAdmin) && job?.id;
-  const showEditJob = canManageJob && !isClosed;
-  const showCloseJob = canManageJob && !isClosed;
-  const showApplications = isAlumni && job?.id;
+  const isOwner =
+    job?.postedByEmail?.toLowerCase() === user?.email?.toLowerCase();
+  const canEditJob = job?.id && !isClosed && (isAdmin || (isAlumni && isOwner));
+  const canCloseJob = job?.id && !isClosed && (isAdmin || (isAlumni && isOwner));
+  const canViewApplications = job?.id && isAlumni && isOwner;
 
   const handleCloseJob = async () => {
     setClosing(true);
@@ -243,17 +245,17 @@ const JobDetails = () => {
           <p>{formatValue(job?.companyName)}</p>
         </div>
         <div className="job-management-actions">
-          {showEditJob && (
+          {canEditJob && (
             <Link className="job-button job-button--secondary" to={`/jobs/${job.id}/edit`}>
               Edit Job
             </Link>
           )}
-          {showApplications && (
+          {canViewApplications && (
             <Link className="job-button job-button--secondary" to={`/jobs/${job.id}/applications`}>
               View Applications
             </Link>
           )}
-          {showCloseJob && (
+          {canCloseJob && (
             <button type="button" onClick={handleCloseJob} disabled={closing}>
               {closing ? "Closing..." : "Close Job"}
             </button>

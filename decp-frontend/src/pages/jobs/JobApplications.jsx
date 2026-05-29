@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getJobApplications, updateApplicationStatus } from "../../api/jobApi";
+import { getJobApplications, getJobById, updateApplicationStatus } from "../../api/jobApi";
+import { useAuth } from "../../auth/useAuth";
 import ApplicationStatusBadge from "../../components/jobs/ApplicationStatusBadge";
 import ApplicationStatusSelector from "../../components/jobs/ApplicationStatusSelector";
 import { getNextApplicationStatuses } from "../../constants/jobOptions";
+import { getApiErrorMessage } from "../../utils/apiError";
 import "./Jobs.css";
 
 const getErrorMessage = (error, fallback) => {
@@ -17,11 +19,14 @@ const getErrorMessage = (error, fallback) => {
   }
 
   if (error.response?.status === 400 || error.response?.status === 409) {
-    return error.response?.data?.message ?? "That application status transition is not allowed.";
+    return getApiErrorMessage(error, "That application status transition is not allowed.");
   }
 
-  return error.response?.data?.message ?? error.message ?? fallback;
+  return getApiErrorMessage(error, fallback);
 };
+
+const isJobOwner = (job, user) =>
+  job?.postedByEmail?.toLowerCase() === user?.email?.toLowerCase();
 
 const normalizeApplications = (applicationData) => {
   if (Array.isArray(applicationData)) {
@@ -72,7 +77,9 @@ const getApplicationKey = (application, index) =>
 
 const JobApplications = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [applications, setApplications] = useState([]);
+  const [canManageApplications, setCanManageApplications] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [success, setSuccess] = useState("");
@@ -85,11 +92,33 @@ const JobApplications = () => {
       setLoading(true);
       setError("");
       setSuccess("");
+      setCanManageApplications(false);
 
       try {
+        const jobData = await getJobById(id);
+        const isAlumni = user?.role?.toUpperCase() === "ALUMNI";
+        const isOwner = isAlumni && isJobOwner(jobData, user);
+
+        if (!jobData) {
+          if (isMounted) {
+            setApplications([]);
+            setError("This job could not be found.");
+          }
+          return;
+        }
+
+        if (!isOwner) {
+          if (isMounted) {
+            setApplications([]);
+            setError("You can only view applications for jobs you posted.");
+          }
+          return;
+        }
+
         const applicationData = await getJobApplications(id);
 
         if (isMounted) {
+          setCanManageApplications(true);
           setApplications(normalizeApplications(applicationData));
         }
       } catch (loadError) {
@@ -109,9 +138,14 @@ const JobApplications = () => {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, user]);
 
   const handleStatusUpdate = async (application, status) => {
+    if (!canManageApplications) {
+      setError("You can only update applications for jobs you posted.");
+      return;
+    }
+
     if (!application.id || !getNextApplicationStatuses(application.status).includes(status)) {
       setError("That application status transition is not allowed.");
       return;
@@ -155,7 +189,7 @@ const JobApplications = () => {
 
       {loading ? (
         <div className="jobs-state">Loading applications...</div>
-      ) : applications.length > 0 ? (
+      ) : error && applications.length === 0 ? null : applications.length > 0 ? (
         <div className="applications-list">
           {applications.map((application, index) => (
             <article className="application-card" key={getApplicationKey(application, index)}>
@@ -188,12 +222,14 @@ const JobApplications = () => {
                 </div>
               </dl>
 
-              <ApplicationStatusSelector
-                status={application.status}
-                updating={updatingId === application.id}
-                disabled={!application.id}
-                onUpdate={(nextStatus) => handleStatusUpdate(application, nextStatus)}
-              />
+              {canManageApplications && (
+                <ApplicationStatusSelector
+                  status={application.status}
+                  updating={updatingId === application.id}
+                  disabled={!application.id}
+                  onUpdate={(nextStatus) => handleStatusUpdate(application, nextStatus)}
+                />
+              )}
             </article>
           ))}
         </div>

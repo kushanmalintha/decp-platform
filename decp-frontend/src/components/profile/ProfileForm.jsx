@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
+const MIN_GRADUATION_YEAR = 1900;
+const MAX_GRADUATION_YEAR = new Date().getFullYear() + 10;
+
 const profileToFormValues = (profile) => ({
   name: profile?.name ?? "",
   bio: profile?.bio ?? "",
@@ -82,8 +85,8 @@ const ProfileForm = ({ initialProfile, onSubmit, submitLabel = "Save Profile" })
         Graduation Year
         <input
           type="number"
-          min="2000"
-          max="2100"
+          min={MIN_GRADUATION_YEAR}
+          max={MAX_GRADUATION_YEAR}
           {...register("graduationYear", {
             validate: (value) => {
               if (value === "" || value === null || value === undefined) {
@@ -96,7 +99,10 @@ const ProfileForm = ({ initialProfile, onSubmit, submitLabel = "Save Profile" })
                 return "Graduation year must be a whole year.";
               }
 
-              return (year >= 2000 && year <= 2100) || "Use a year from 2000 to 2100.";
+              return (
+                (year >= MIN_GRADUATION_YEAR && year <= MAX_GRADUATION_YEAR) ||
+                `Use a year from ${MIN_GRADUATION_YEAR} to ${MAX_GRADUATION_YEAR}.`
+              );
             },
           })}
         />

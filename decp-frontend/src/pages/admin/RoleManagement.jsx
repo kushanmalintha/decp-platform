@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { assignUserRole } from "../../api/authApi";
+import { getApiErrorMessage } from "../../utils/apiError";
 import "./Admin.css";
 
 const ASSIGNABLE_ROLES = ["STUDENT", "ALUMNI"];
@@ -20,7 +21,13 @@ const getResponsePayload = (response) => {
 };
 
 const getBackendMessage = (error) => {
-  const message = error.response?.data?.message;
+  const data = error.response?.data;
+
+  if (data === null || data === undefined) {
+    return "";
+  }
+
+  const message = getApiErrorMessage({ response: { data } }, "");
 
   if (typeof message !== "string") {
     return "";
@@ -42,11 +49,11 @@ const getRoleAssignmentErrorMessage = (error) => {
   }
 
   if (status === 401) {
-    return "Your session has expired or is invalid. Please log in again.";
+    return backendMessage || "Your session has expired or is invalid. Please log in again.";
   }
 
   if (status === 403) {
-    return "Only admin users can assign roles.";
+    return backendMessage || "Only admin users can assign roles.";
   }
 
   return backendMessage || "Unable to update the role right now. Please try again.";
