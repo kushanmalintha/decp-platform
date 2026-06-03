@@ -1,5 +1,8 @@
 package com.decp.job_service.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -75,13 +78,20 @@ public class KafkaConfig {
         Map<String, Object> configs = new HashMap<>();
         configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configs.put("spring.json.add.type.headers", false);
-        return new DefaultKafkaProducerFactory<>(configs);
+
+        JsonSerializer<Object> jsonSerializer = new JsonSerializer<>(kafkaObjectMapper());
+        jsonSerializer.setAddTypeInfo(false);
+        return new DefaultKafkaProducerFactory<>(configs, new StringSerializer(), jsonSerializer);
     }
 
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
+    }
+
+    private ObjectMapper kafkaObjectMapper() {
+        return new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 }
