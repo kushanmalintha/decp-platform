@@ -43,10 +43,12 @@ const PostCard = ({
     <article className="feed-post-card">
       <div className="feed-post-card__header">
         <div>
-          <div className="feed-post-card__source">
-            <SourceBadge sourceType={sourceType} />
-            {isJobPost && <span>Created from a job event</span>}
-          </div>
+          {isJobPost && (
+            <div className="feed-post-card__source">
+              <SourceBadge sourceType={sourceType} />
+              <span>Created from a job event</span>
+            </div>
+          )}
           <p className="feed-post-card__author">{post?.authorEmail || "Unknown author"}</p>
         </div>
         <span className="feed-post-card__date">{formatDateTime(post?.createdAt)}</span>
