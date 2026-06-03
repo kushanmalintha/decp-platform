@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @NoArgsConstructor
@@ -13,7 +13,7 @@ public class JobClosedEvent {
     private Long jobId;
     private String title;
     private String postedByEmail;
-    private LocalDateTime closedAt;
+    private OffsetDateTime closedAt;
     private String status;
     private String companyName;
     private String location;

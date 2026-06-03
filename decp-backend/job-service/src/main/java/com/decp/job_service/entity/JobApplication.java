@@ -3,6 +3,7 @@ package com.decp.job_service.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Entity
@@ -40,7 +41,7 @@ public class JobApplication {
     @PrePersist
     public void prePersist() {
         if (appliedAt == null) {
-            appliedAt = LocalDateTime.now();
+            appliedAt = LocalDateTime.now(Clock.systemUTC());
         }
         if (status == null) {
             status = ApplicationStatus.APPLIED;

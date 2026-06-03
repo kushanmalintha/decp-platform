@@ -5,6 +5,9 @@ import com.decp.job_service.entity.Job;
 import com.decp.job_service.entity.JobStatus;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 
 @Component
@@ -33,8 +36,11 @@ public class JobMapper {
                         : new ArrayList<>(job.getSkillsRequired()))
                 .experienceLevel(job.getExperienceLevel())
                 .status(job.getStatus() == null ? JobStatus.OPEN : job.getStatus())
-                .createdAt(job.getCreatedAt())
+                .createdAt(toUtcOffsetDateTime(job.getCreatedAt()))
                 .build();
     }
 
+    private OffsetDateTime toUtcOffsetDateTime(LocalDateTime value) {
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
+    }
 }

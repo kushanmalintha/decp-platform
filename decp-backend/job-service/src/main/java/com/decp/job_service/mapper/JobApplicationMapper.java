@@ -4,6 +4,10 @@ import com.decp.job_service.dto.JobApplicationResponse;
 import com.decp.job_service.entity.JobApplication;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Component
 public class JobApplicationMapper {
 
@@ -17,8 +21,12 @@ public class JobApplicationMapper {
                 .jobId(jobApplication.getJobId())
                 .studentEmail(jobApplication.getStudentEmail())
                 .applicantEmail(jobApplication.getStudentEmail())
-                .appliedAt(jobApplication.getAppliedAt())
+                .appliedAt(toUtcOffsetDateTime(jobApplication.getAppliedAt()))
                 .status(jobApplication.getStatus() == null ? null : jobApplication.getStatus().name())
                 .build();
+    }
+
+    private OffsetDateTime toUtcOffsetDateTime(LocalDateTime value) {
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 }

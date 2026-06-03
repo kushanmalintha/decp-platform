@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Builder
@@ -21,5 +21,5 @@ public class NotificationResponse {
     @JsonProperty("isRead")
     private boolean isRead;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }

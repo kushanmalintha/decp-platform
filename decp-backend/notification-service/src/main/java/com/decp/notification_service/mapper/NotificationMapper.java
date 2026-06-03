@@ -4,6 +4,10 @@ import com.decp.notification_service.dto.NotificationResponse;
 import com.decp.notification_service.entity.Notification;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Component
 public class NotificationMapper {
 
@@ -18,7 +22,11 @@ public class NotificationMapper {
                 .message(notification.getMessage())
                 .type(notification.getType())
                 .isRead(isRead)
-                .createdAt(notification.getCreatedAt())
+                .createdAt(toUtcOffsetDateTime(notification.getCreatedAt()))
                 .build();
+    }
+
+    private OffsetDateTime toUtcOffsetDateTime(LocalDateTime value) {
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 }

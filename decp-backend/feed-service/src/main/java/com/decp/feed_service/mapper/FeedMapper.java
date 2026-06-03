@@ -6,6 +6,10 @@ import com.decp.feed_service.entity.Comment;
 import com.decp.feed_service.entity.Post;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Component
 public class FeedMapper {
 
@@ -19,7 +23,7 @@ public class FeedMapper {
                 .content(post.getContent())
                 .authorEmail(post.getAuthorEmail())
                 .likes(post.getLikes())
-                .createdAt(post.getCreatedAt())
+                .createdAt(toUtcOffsetDateTime(post.getCreatedAt()))
                 .sourceType(post.getSourceType() == null
                         ? com.decp.feed_service.entity.FeedPostSourceType.MANUAL
                         : post.getSourceType())
@@ -37,7 +41,11 @@ public class FeedMapper {
                 .postId(comment.getPostId())
                 .authorEmail(comment.getAuthorEmail())
                 .content(comment.getContent())
-                .createdAt(comment.getCreatedAt())
+                .createdAt(toUtcOffsetDateTime(comment.getCreatedAt()))
                 .build();
+    }
+
+    private OffsetDateTime toUtcOffsetDateTime(LocalDateTime value) {
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 }

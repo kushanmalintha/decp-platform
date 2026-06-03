@@ -7,7 +7,7 @@ import com.decp.job_service.entity.WorkMode;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -32,5 +32,5 @@ public class JobResponse {
     private List<String> skillsRequired;
     private ExperienceLevel experienceLevel;
     private JobStatus status;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }

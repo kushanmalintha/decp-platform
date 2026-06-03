@@ -2,7 +2,7 @@ package com.decp.job_service.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -15,6 +15,6 @@ public class JobApplicationResponse {
     private Long jobId;
     private String studentEmail;
     private String applicantEmail;
-    private LocalDateTime appliedAt;
+    private OffsetDateTime appliedAt;
     private String status;
 }

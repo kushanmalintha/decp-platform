@@ -2,7 +2,7 @@ package com.decp.feed_service.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -15,5 +15,5 @@ public class CommentResponse {
     private Long postId;
     private String authorEmail;
     private String content;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }

@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class NotificationService {
                 .postedBy(event.getPostedBy())
                 .recipientRole(ROLE_STUDENT)
                 .read(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .build();
 
         return notificationRepository.save(notification);
@@ -73,7 +74,7 @@ public class NotificationService {
                 .postedBy(event.getPostedByEmail())
                 .recipientRole(ROLE_STUDENT)
                 .read(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .build();
 
         return notificationRepository.save(notification);
@@ -90,7 +91,7 @@ public class NotificationService {
                 .postedBy(event.getRecruiterEmail())
                 .recipientEmail(event.getStudentEmail())
                 .read(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .build();
 
         Notification savedNotification = notificationRepository.save(notification);
@@ -116,7 +117,7 @@ public class NotificationService {
                 .postedBy(event.getPostedBy())
                 .recipientEmail(event.getPostedBy())
                 .read(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .build();
 
         return notificationRepository.save(notification);
@@ -225,7 +226,7 @@ public class NotificationService {
             notificationReadRepository.save(NotificationRead.builder()
                     .notificationId(notificationId)
                     .userEmail(userEmail)
-                    .readAt(LocalDateTime.now())
+                    .readAt(currentUtcTime())
                     .build());
             log.info("Created notification read state notificationId={} userEmail={}", notificationId, userEmail);
         } catch (DataIntegrityViolationException ex) {
@@ -276,5 +277,9 @@ public class NotificationService {
 
     private String normalizeStatus(String status) {
         return status == null ? "" : status.trim().toUpperCase();
+    }
+
+    private LocalDateTime currentUtcTime() {
+        return LocalDateTime.now(Clock.systemUTC());
     }
 }

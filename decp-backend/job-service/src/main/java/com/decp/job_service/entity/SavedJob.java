@@ -3,6 +3,7 @@ package com.decp.job_service.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,7 +37,7 @@ public class SavedJob {
     @PrePersist
     public void prePersist() {
         if (savedAt == null) {
-            savedAt = LocalDateTime.now();
+            savedAt = LocalDateTime.now(Clock.systemUTC());
         }
     }
 }

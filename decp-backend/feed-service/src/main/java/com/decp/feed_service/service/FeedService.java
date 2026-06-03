@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,7 +36,7 @@ public class FeedService {
                 .authorEmail(email)
                 .content(request.getContent())
                 .likes(0)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .sourceType(FeedPostSourceType.MANUAL)
                 .build();
 
@@ -48,7 +49,7 @@ public class FeedService {
                 .authorEmail(email)
                 .content(content)
                 .likes(0)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .sourceType(FeedPostSourceType.MANUAL)
                 .build();
 
@@ -60,7 +61,7 @@ public class FeedService {
                 .authorEmail(email)
                 .content(content)
                 .likes(0)
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .sourceType(FeedPostSourceType.JOB)
                 .sourceId(jobId)
                 .build();
@@ -151,7 +152,7 @@ public class FeedService {
                 .postId(postId)
                 .authorEmail(email)
                 .content(request.getContent())
-                .createdAt(LocalDateTime.now())
+                .createdAt(currentUtcTime())
                 .build();
 
         Comment savedComment = commentRepository.save(comment);
@@ -255,5 +256,9 @@ public class FeedService {
 
     private boolean isJobGenerated(Post post) {
         return FeedPostSourceType.JOB.equals(post.getSourceType());
+    }
+
+    private LocalDateTime currentUtcTime() {
+        return LocalDateTime.now(Clock.systemUTC());
     }
 }

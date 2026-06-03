@@ -3,7 +3,7 @@ package com.decp.feed_service.dto;
 import com.decp.feed_service.entity.FeedPostSourceType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -16,7 +16,7 @@ public class PostResponse {
     private String content;
     private String authorEmail;
     private int likes;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private FeedPostSourceType sourceType;
     private Long sourceId;
 }

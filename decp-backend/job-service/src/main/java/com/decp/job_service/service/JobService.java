@@ -30,6 +30,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -247,7 +249,7 @@ public class JobService {
                 .jobId(savedJob.getId())
                 .title(savedJob.getTitle())
                 .postedByEmail(savedJob.getPostedByEmail())
-                .closedAt(java.time.LocalDateTime.now())
+                .closedAt(OffsetDateTime.now(Clock.systemUTC()))
                 .status(savedJob.getStatus().name())
                 .companyName(savedJob.getCompanyName())
                 .location(savedJob.getLocation())

@@ -3,6 +3,7 @@ package com.decp.job_service.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -59,7 +60,7 @@ public class Job {
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = LocalDateTime.now(Clock.systemUTC());
         }
         if (status == null) {
             status = JobStatus.OPEN;
