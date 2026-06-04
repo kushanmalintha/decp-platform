@@ -14,6 +14,10 @@ import java.time.ZoneOffset;
 public class FeedMapper {
 
     public PostResponse toPostResponse(Post post) {
+        return toPostResponse(post, false);
+    }
+
+    public PostResponse toPostResponse(Post post, boolean likedByCurrentUser) {
         if (post == null) {
             return null;
         }
@@ -23,6 +27,7 @@ public class FeedMapper {
                 .content(post.getContent())
                 .authorEmail(post.getAuthorEmail())
                 .likes(post.getLikes())
+                .likedByCurrentUser(likedByCurrentUser)
                 .createdAt(toUtcOffsetDateTime(post.getCreatedAt()))
                 .sourceType(post.getSourceType() == null
                         ? com.decp.feed_service.entity.FeedPostSourceType.MANUAL

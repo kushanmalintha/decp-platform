@@ -29,6 +29,7 @@ public class FeedService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final PostLikeRepository postLikeRepository;
     private final FeedMapper feedMapper;
 
     public PostResponse createPost(String email, CreatePostRequest request) {
@@ -73,15 +74,15 @@ public class FeedService {
                 email);
     }
 
-    public Page<PostResponse> getAllPosts(Pageable pageable) {
+    public Page<PostResponse> getAllPosts(Pageable pageable, String requesterEmail) {
         return postRepository.findAll(pageable)
-                .map(feedMapper::toPostResponse);
+                .map(post -> feedMapper.toPostResponse(post, hasLiked(post.getId(), requesterEmail)));
     }
 
-    public PostResponse getPostById(Long postId) {
+    public PostResponse getPostById(Long postId, String requesterEmail) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
-        return feedMapper.toPostResponse(post);
+        return feedMapper.toPostResponse(post, hasLiked(postId, requesterEmail));
     }
 
     public PostResponse updatePost(Long postId, UpdateFeedPostRequest request, String requesterEmail, String requesterRole) {
@@ -127,19 +128,39 @@ public class FeedService {
         }
 
         commentRepository.deleteByPostId(postId);
+        postLikeRepository.deleteByPostId(postId);
         postRepository.delete(post);
 
         log.info("Feed post deleted successfully: postId={}, requesterEmail={}, requesterRole={}",
                 postId, requesterEmail, requesterRole);
     }
 
-    public PostResponse likePost(Long postId) {
+    @Transactional
+    public PostResponse likePost(Long postId, String requesterEmail) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
 
-        post.setLikes(post.getLikes() + 1);
+        String normalizedEmail = normalizeEmail(requesterEmail);
+        boolean likedByCurrentUser;
+        var existingLike = postLikeRepository.findByPostIdAndUserEmailIgnoreCase(postId, normalizedEmail);
+
+        if (existingLike.isPresent()) {
+            postLikeRepository.delete(existingLike.get());
+            post.setLikes(Math.max(0, post.getLikes() - 1));
+            likedByCurrentUser = false;
+        } else {
+            PostLike postLike = PostLike.builder()
+                    .postId(postId)
+                    .userEmail(normalizedEmail)
+                    .createdAt(currentUtcTime())
+                    .build();
+            postLikeRepository.save(postLike);
+            post.setLikes(post.getLikes() + 1);
+            likedByCurrentUser = true;
+        }
+
         Post savedPost = postRepository.save(post);
-        return feedMapper.toPostResponse(savedPost);
+        return feedMapper.toPostResponse(savedPost, likedByCurrentUser);
     }
 
     public CommentResponse addComment(Long postId, String email, CreateCommentRequest request) {
@@ -256,6 +277,17 @@ public class FeedService {
 
     private boolean isJobGenerated(Post post) {
         return FeedPostSourceType.JOB.equals(post.getSourceType());
+    }
+
+    private boolean hasLiked(Long postId, String requesterEmail) {
+        return postId != null
+                && requesterEmail != null
+                && !requesterEmail.isBlank()
+                && postLikeRepository.existsByPostIdAndUserEmailIgnoreCase(postId, normalizeEmail(requesterEmail));
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 
     private LocalDateTime currentUtcTime() {

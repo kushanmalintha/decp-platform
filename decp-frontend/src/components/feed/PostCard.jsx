@@ -24,6 +24,7 @@ const formatDateTime = (value) => {
 };
 
 const getLikes = (post) => Number(post?.likes ?? post?.likeCount ?? 0);
+const isLikedByCurrentUser = (post) => Boolean(post?.likedByCurrentUser);
 
 const PostCard = ({
   post,
@@ -38,6 +39,7 @@ const PostCard = ({
 }) => {
   const sourceType = post?.sourceType?.toUpperCase?.() ?? "MANUAL";
   const isJobPost = sourceType === "JOB";
+  const likedByCurrentUser = isLikedByCurrentUser(post);
 
   return (
     <article className="feed-post-card">
@@ -64,14 +66,14 @@ const PostCard = ({
 
       <div className="feed-post-card__actions">
         <button
-          className="feed-button feed-button--secondary"
+          className={`feed-button feed-button--secondary${likedByCurrentUser ? " feed-button--liked" : ""}`}
           type="button"
           onClick={() => onLike?.(post)}
           disabled={liking}
-          title="Like post"
+          title={likedByCurrentUser ? "Remove like" : "Like post"}
         >
-          <Heart size={16} aria-hidden="true" />
-          {liking ? "Liking..." : `${getLikes(post)} likes`}
+          <Heart size={16} fill={likedByCurrentUser ? "currentColor" : "none"} aria-hidden="true" />
+          {liking ? "Updating..." : `${getLikes(post)} likes`}
         </button>
         <Link className="feed-button feed-button--secondary" to={`/feed/posts/${post?.id}`}>
           <MessageCircle size={16} aria-hidden="true" />

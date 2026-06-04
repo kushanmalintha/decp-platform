@@ -77,6 +77,7 @@ const mergePostResponse = (currentPost, responseData, fallbackLikesDelta = 0) =>
   return {
     ...currentPost,
     likes: Number(currentPost.likes ?? currentPost.likeCount ?? 0) + fallbackLikesDelta,
+    likedByCurrentUser: !currentPost?.likedByCurrentUser,
   };
 };
 
@@ -176,7 +177,9 @@ const PostDetails = () => {
 
     try {
       const likedPost = await likePost(post.id);
-      setPost((currentPost) => mergePostResponse(currentPost, likedPost, 1));
+      setPost((currentPost) =>
+        mergePostResponse(currentPost, likedPost, currentPost?.likedByCurrentUser ? -1 : 1),
+      );
     } catch (likeError) {
       setActionError(getMutationErrorMessage(likeError, "Unable to like this post."));
     } finally {

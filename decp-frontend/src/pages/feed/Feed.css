@@ -171,6 +171,12 @@
   background: #ffffff;
 }
 
+.feed-button--liked {
+  border-color: #f7b7c8;
+  color: #c11574;
+  background: #fff1f7;
+}
+
 .feed-button--danger {
   border: 1px solid #f5c2c7;
   color: #b42318;

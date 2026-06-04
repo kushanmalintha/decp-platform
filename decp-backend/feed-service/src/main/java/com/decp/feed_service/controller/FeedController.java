@@ -29,13 +29,19 @@ public class FeedController {
     }
 
     @GetMapping("/posts")
-    public Page<PostResponse> getAllPosts(Pageable pageable) {
-        return feedService.getAllPosts(pageable);
+    public Page<PostResponse> getAllPosts(
+            Pageable pageable,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        return feedService.getAllPosts(pageable, extractEmailOrNull(authHeader));
     }
 
     @GetMapping("/posts/{id}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
-        return ResponseEntity.ok(feedService.getPostById(id));
+    public ResponseEntity<PostResponse> getPostById(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        return ResponseEntity.ok(feedService.getPostById(id, extractEmailOrNull(authHeader)));
     }
 
     @PutMapping("/posts/{id}")
@@ -59,8 +65,12 @@ public class FeedController {
     }
 
     @PostMapping("/posts/{id}/like")
-    public PostResponse likePost(@PathVariable Long id) {
-        return feedService.likePost(id);
+    public PostResponse likePost(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return feedService.likePost(id, user.email());
     }
 
     @PostMapping("/posts/{id}/comments")
@@ -76,5 +86,12 @@ public class FeedController {
     @GetMapping("/posts/{id}/comments")
     public List<CommentResponse> getComments(@PathVariable Long id) {
         return feedService.getComments(id);
+    }
+
+    private String extractEmailOrNull(String authHeader) {
+        if (authHeader == null || authHeader.isBlank()) {
+            return null;
+        }
+        return jwtUtil.extractUser(authHeader).email();
     }
 }
