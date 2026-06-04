@@ -57,29 +57,11 @@ const normalizeComments = (commentsData) => {
   return [];
 };
 
-const mergePostResponse = (currentPost, responseData, fallbackLikesDelta = 0) => {
-  if (responseData && typeof responseData === "object" && !Array.isArray(responseData)) {
-    const responseLooksLikePost = responseData.id || responseData.content || responseData.sourceType;
-
-    if (responseLooksLikePost) {
-      return { ...currentPost, ...responseData };
-    }
-
-    if (Object.prototype.hasOwnProperty.call(responseData, "likes")) {
-      return { ...currentPost, likes: responseData.likes };
-    }
-
-    if (Object.prototype.hasOwnProperty.call(responseData, "likeCount")) {
-      return { ...currentPost, likeCount: responseData.likeCount };
-    }
-  }
-
-  return {
-    ...currentPost,
-    likes: Number(currentPost.likes ?? currentPost.likeCount ?? 0) + fallbackLikesDelta,
-    likedByCurrentUser: !currentPost?.likedByCurrentUser,
-  };
-};
+const togglePostLike = (post) => ({
+  ...post,
+  likes: Math.max(0, Number(post?.likes ?? post?.likeCount ?? 0) + (post?.likedByCurrentUser ? -1 : 1)),
+  likedByCurrentUser: !post?.likedByCurrentUser,
+});
 
 const PostDetails = () => {
   const { id } = useParams();
@@ -89,7 +71,6 @@ const PostDetails = () => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
-  const [liking, setLiking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -172,18 +153,16 @@ const PostDetails = () => {
   }, [id]);
 
   const handleLikePost = async () => {
-    setLiking(true);
     setActionError("");
+    const originalPost = post;
+
+    setPost((currentPost) => togglePostLike(currentPost));
 
     try {
-      const likedPost = await likePost(post.id);
-      setPost((currentPost) =>
-        mergePostResponse(currentPost, likedPost, currentPost?.likedByCurrentUser ? -1 : 1),
-      );
+      await likePost(post.id);
     } catch (likeError) {
+      setPost(originalPost);
       setActionError(getMutationErrorMessage(likeError, "Unable to like this post."));
-    } finally {
-      setLiking(false);
     }
   };
 
@@ -312,7 +291,6 @@ const PostDetails = () => {
         post={post}
         canEdit={canEditPost(post, user)}
         canDelete={canDeletePost(post, user)}
-        liking={liking}
         deleting={deleting}
         onLike={handleLikePost}
         onEdit={() => setEditMode(true)}

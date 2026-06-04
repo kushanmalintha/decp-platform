@@ -1,7 +1,9 @@
 package com.decp.job_service.controller;
 
 import com.decp.job_service.dto.CreateJobRequest;
+import com.decp.job_service.dto.CreateJobCommentRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
+import com.decp.job_service.dto.JobCommentResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
@@ -45,13 +47,25 @@ public class JobController {
             @RequestParam(required = false) WorkMode workMode,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) ExperienceLevel experienceLevel,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             Pageable pageable) {
-        return jobService.getAllJobs(keyword, status, postedByEmail, jobType, workMode, location, experienceLevel, pageable);
+        return jobService.getAllJobs(
+                keyword,
+                status,
+                postedByEmail,
+                jobType,
+                workMode,
+                location,
+                experienceLevel,
+                pageable,
+                extractEmailOrNull(authHeader));
     }
 
     @GetMapping("/jobs/{id}")
-    public ResponseEntity<JobResponse> getJobById(@PathVariable Long id) {
-        return ResponseEntity.ok(jobService.getJobById(id));
+    public ResponseEntity<JobResponse> getJobById(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(jobService.getJobById(id, extractEmailOrNull(authHeader)));
     }
 
     @PutMapping("/jobs/{id}")
@@ -78,6 +92,28 @@ public class JobController {
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
         jobService.unsaveJob(id, user.email(), user.role());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/jobs/{id}/like")
+    public ResponseEntity<JobResponse> likeJob(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return ResponseEntity.ok(jobService.likeJob(id, user.email()));
+    }
+
+    @PostMapping("/jobs/{id}/comments")
+    public JobCommentResponse addComment(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody CreateJobCommentRequest request) {
+        JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
+        return jobService.addComment(id, user.email(), request);
+    }
+
+    @GetMapping("/jobs/{id}/comments")
+    public List<JobCommentResponse> getComments(@PathVariable Long id) {
+        return jobService.getComments(id);
     }
 
     @GetMapping("/jobs/saved")
@@ -134,5 +170,12 @@ public class JobController {
             @RequestBody UpdateApplicationStatusRequest request) {
         JwtUtil.UserContext user = jwtUtil.extractUser(authHeader);
         return jobService.updateApplicationStatus(id, user.email(), user.role(), request);
+    }
+
+    private String extractEmailOrNull(String authHeader) {
+        if (authHeader == null || authHeader.isBlank()) {
+            return null;
+        }
+        return jwtUtil.extractUser(authHeader).email();
     }
 }

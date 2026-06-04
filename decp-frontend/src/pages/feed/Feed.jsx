@@ -76,29 +76,11 @@ const updatePostInPage = (page, postId, updater) => {
   };
 };
 
-const mergePostResponse = (currentPost, responseData, fallbackLikesDelta = 0) => {
-  if (responseData && typeof responseData === "object" && !Array.isArray(responseData)) {
-    const responseLooksLikePost = responseData.id || responseData.content || responseData.sourceType;
-
-    if (responseLooksLikePost) {
-      return { ...currentPost, ...responseData };
-    }
-
-    if (Object.prototype.hasOwnProperty.call(responseData, "likes")) {
-      return { ...currentPost, likes: responseData.likes };
-    }
-
-    if (Object.prototype.hasOwnProperty.call(responseData, "likeCount")) {
-      return { ...currentPost, likeCount: responseData.likeCount };
-    }
-  }
-
-  return {
-    ...currentPost,
-    likes: Number(currentPost.likes ?? currentPost.likeCount ?? 0) + fallbackLikesDelta,
-    likedByCurrentUser: !currentPost?.likedByCurrentUser,
-  };
-};
+const togglePostLike = (post) => ({
+  ...post,
+  likes: Math.max(0, Number(post?.likes ?? post?.likeCount ?? 0) + (post?.likedByCurrentUser ? -1 : 1)),
+  likedByCurrentUser: !post?.likedByCurrentUser,
+});
 
 const Feed = () => {
   const { user } = useAuth();
@@ -107,7 +89,6 @@ const Feed = () => {
   const [postsPage, setPostsPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [likingPostId, setLikingPostId] = useState(null);
   const [deletingPostId, setDeletingPostId] = useState(null);
   const [editingPostId, setEditingPostId] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -175,20 +156,18 @@ const Feed = () => {
   };
 
   const handleLikePost = async (post) => {
-    setLikingPostId(post.id);
     setActionError("");
+    const originalPost = post;
+
+    setPostsPage((currentPage) =>
+      updatePostInPage(currentPage, post.id, (currentPost) => togglePostLike(currentPost)),
+    );
 
     try {
-      const likedPost = await likePost(post.id);
-      setPostsPage((currentPage) =>
-        updatePostInPage(currentPage, post.id, (currentPost) =>
-          mergePostResponse(currentPost, likedPost, currentPost?.likedByCurrentUser ? -1 : 1),
-        ),
-      );
+      await likePost(post.id);
     } catch (likeError) {
+      setPostsPage((currentPage) => updatePostInPage(currentPage, post.id, () => originalPost));
       setActionError(getMutationErrorMessage(likeError, "Unable to like this post."));
-    } finally {
-      setLikingPostId(null);
     }
   };
 
@@ -289,7 +268,6 @@ const Feed = () => {
                 post={post}
                 canEdit={canEditPost(post, user)}
                 canDelete={canDeletePost(post, user)}
-                liking={String(likingPostId) === String(post.id)}
                 deleting={String(deletingPostId) === String(post.id)}
                 onLike={handleLikePost}
                 onEdit={() => setEditingPostId(post.id)}

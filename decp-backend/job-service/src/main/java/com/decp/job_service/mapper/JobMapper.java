@@ -1,7 +1,9 @@
 package com.decp.job_service.mapper;
 
 import com.decp.job_service.dto.JobResponse;
+import com.decp.job_service.dto.JobCommentResponse;
 import com.decp.job_service.entity.Job;
+import com.decp.job_service.entity.JobComment;
 import com.decp.job_service.entity.JobStatus;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +16,14 @@ import java.util.ArrayList;
 public class JobMapper {
 
     public JobResponse toJobResponse(Job job) {
+        return toJobResponse(job, false, 0);
+    }
+
+    public JobResponse toJobResponse(Job job, boolean likedByCurrentUser) {
+        return toJobResponse(job, likedByCurrentUser, 0);
+    }
+
+    public JobResponse toJobResponse(Job job, boolean likedByCurrentUser, long likes) {
         if (job == null) {
             return null;
         }
@@ -36,7 +46,23 @@ public class JobMapper {
                         : new ArrayList<>(job.getSkillsRequired()))
                 .experienceLevel(job.getExperienceLevel())
                 .status(job.getStatus() == null ? JobStatus.OPEN : job.getStatus())
+                .likes(Math.toIntExact(likes))
+                .likedByCurrentUser(likedByCurrentUser)
                 .createdAt(toUtcOffsetDateTime(job.getCreatedAt()))
+                .build();
+    }
+
+    public JobCommentResponse toJobCommentResponse(JobComment comment) {
+        if (comment == null) {
+            return null;
+        }
+
+        return JobCommentResponse.builder()
+                .id(comment.getId())
+                .jobId(comment.getJobId())
+                .authorEmail(comment.getAuthorEmail())
+                .content(comment.getContent())
+                .createdAt(toUtcOffsetDateTime(comment.getCreatedAt()))
                 .build();
     }
 

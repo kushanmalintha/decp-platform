@@ -30,7 +30,6 @@ const PostCard = ({
   post,
   canEdit = false,
   canDelete = false,
-  liking = false,
   deleting = false,
   onLike,
   onEdit,
@@ -69,11 +68,10 @@ const PostCard = ({
           className={`feed-button feed-button--secondary${likedByCurrentUser ? " feed-button--liked" : ""}`}
           type="button"
           onClick={() => onLike?.(post)}
-          disabled={liking}
           title={likedByCurrentUser ? "Remove like" : "Like post"}
         >
           <Heart size={16} fill={likedByCurrentUser ? "currentColor" : "none"} aria-hidden="true" />
-          {liking ? "Updating..." : `${getLikes(post)} likes`}
+          {`${getLikes(post)} likes`}
         </button>
         <Link className="feed-button feed-button--secondary" to={`/feed/posts/${post?.id}`}>
           <MessageCircle size={16} aria-hidden="true" />

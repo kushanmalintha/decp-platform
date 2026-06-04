@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { getJobs } from "../../api/jobApi";
+import { getJobs, likeJob } from "../../api/jobApi";
 import JobCard from "../../components/jobs/JobCard";
 import JobFilters from "../../components/jobs/JobFilters";
 import { DEFAULT_JOB_QUERY } from "../../constants/jobOptions";
@@ -39,6 +39,23 @@ const normalizePage = (pageData) => {
     totalElements: Number.isInteger(pageData?.totalElements) ? pageData.totalElements : null,
   };
 };
+
+const updateJobInPage = (page, jobId, updater) => {
+  if (!page) {
+    return page;
+  }
+
+  return {
+    ...page,
+    content: page.content.map((job) => (String(job.id) === String(jobId) ? updater(job) : job)),
+  };
+};
+
+const toggleJobLike = (job) => ({
+  ...job,
+  likes: Math.max(0, Number(job?.likes ?? job?.likeCount ?? 0) + (job?.likedByCurrentUser ? -1 : 1)),
+  likedByCurrentUser: !job?.likedByCurrentUser,
+});
 
 const JobList = () => {
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
@@ -106,6 +123,22 @@ const JobList = () => {
     setPageNumber(0);
   };
 
+  const handleLikeJob = async (job) => {
+    setError("");
+    const originalJob = job;
+
+    setJobsPage((currentPage) =>
+      updateJobInPage(currentPage, job.id, (currentJob) => toggleJobLike(currentJob)),
+    );
+
+    try {
+      await likeJob(job.id);
+    } catch (likeError) {
+      setJobsPage((currentPage) => updateJobInPage(currentPage, job.id, () => originalJob));
+      setError(getErrorMessage(likeError, "Unable to update this like."));
+    }
+  };
+
   const jobs = jobsPage?.content ?? [];
   const currentPage = jobsPage?.number ?? pageNumber;
   const totalPages = jobsPage?.totalPages;
@@ -138,7 +171,11 @@ const JobList = () => {
         <>
           <div className="jobs-list">
             {jobs.map((job) => (
-              <JobCard key={job.id} job={job} />
+              <JobCard
+                key={job.id}
+                job={job}
+                onLike={handleLikeJob}
+              />
             ))}
           </div>
 

@@ -39,6 +39,21 @@ export const closeJob = async (id) => {
   return unwrapResponse(response);
 };
 
+export const likeJob = async (id) => {
+  const response = await axiosClient.post(`/jobs/${id}/like`);
+  return unwrapResponse(response);
+};
+
+export const getJobComments = async (jobId) => {
+  const response = await axiosClient.get(`/jobs/${jobId}/comments`);
+  return unwrapResponse(response);
+};
+
+export const createJobComment = async (jobId, data) => {
+  const response = await axiosClient.post(`/jobs/${jobId}/comments`, data);
+  return unwrapResponse(response);
+};
+
 export const saveJob = async (id) => {
   const response = await axiosClient.post(`/jobs/${id}/save`);
   return unwrapResponse(response);

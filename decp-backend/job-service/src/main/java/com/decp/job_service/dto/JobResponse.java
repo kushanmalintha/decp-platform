@@ -32,5 +32,7 @@ public class JobResponse {
     private List<String> skillsRequired;
     private ExperienceLevel experienceLevel;
     private JobStatus status;
+    private int likes;
+    private boolean likedByCurrentUser;
     private OffsetDateTime createdAt;
 }

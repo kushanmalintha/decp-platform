@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Heart } from "lucide-react";
 
-import { closeJob, getJobById, getSavedJobs } from "../../api/jobApi";
+import { closeJob, createJobComment, getJobById, getJobComments, getSavedJobs, likeJob } from "../../api/jobApi";
 import { useAuth } from "../../auth/useAuth";
 import JobActions from "../../components/jobs/JobActions";
 import JobStatusBadge from "../../components/jobs/JobStatusBadge";
@@ -41,6 +42,26 @@ const formatDate = (value) => {
   }).format(date);
 };
 
+const formatDateTime = (value) => {
+  if (!value) {
+    return "Not provided";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not provided";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 const formatValue = (value) => {
   if (value === null || value === undefined || value === "") {
     return "Not provided";
@@ -63,6 +84,26 @@ const normalizeList = (value) => {
 
   return [];
 };
+
+const normalizeComments = (commentsData) => {
+  if (Array.isArray(commentsData)) {
+    return commentsData;
+  }
+
+  if (Array.isArray(commentsData?.content)) {
+    return commentsData.content;
+  }
+
+  return [];
+};
+
+const getLikes = (job) => Number(job?.likes ?? job?.likeCount ?? 0);
+
+const toggleJobLike = (job) => ({
+  ...job,
+  likes: Math.max(0, Number(job?.likes ?? job?.likeCount ?? 0) + (job?.likedByCurrentUser ? -1 : 1)),
+  likedByCurrentUser: !job?.likedByCurrentUser,
+});
 
 const renderLongValue = (value) => {
   if (Array.isArray(value)) {
@@ -88,11 +129,16 @@ const JobDetails = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const [job, setJob] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentContent, setCommentContent] = useState("");
   const [isSaved, setIsSaved] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(true);
   const [closing, setClosing] = useState(false);
+  const [commenting, setCommenting] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [commentsError, setCommentsError] = useState("");
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -137,6 +183,38 @@ const JobDetails = () => {
   useEffect(() => {
     let isMounted = true;
 
+    const loadComments = async () => {
+      setCommentsLoading(true);
+      setCommentsError("");
+
+      try {
+        const commentsData = await getJobComments(id);
+
+        if (isMounted) {
+          setComments(normalizeComments(commentsData));
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setComments([]);
+          setCommentsError(getErrorMessage(loadError, "Unable to load comments."));
+        }
+      } finally {
+        if (isMounted) {
+          setCommentsLoading(false);
+        }
+      }
+    };
+
+    loadComments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadSavedState = async () => {
       if (user?.role?.toUpperCase() !== "STUDENT" || !id) {
         setIsSaved(null);
@@ -164,6 +242,14 @@ const JobDetails = () => {
       isMounted = false;
     };
   }, [id, user?.role]);
+
+  useEffect(() => {
+    if (!loading && window.location.hash === "#job-comments") {
+      window.setTimeout(() => {
+        document.getElementById("job-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }, [loading]);
 
   const skills = useMemo(() => normalizeList(job?.skillsRequired), [job?.skillsRequired]);
   const normalizedRole = user?.role?.toUpperCase();
@@ -194,6 +280,42 @@ const JobDetails = () => {
       setError(getCloseErrorMessage(closeError));
     } finally {
       setClosing(false);
+    }
+  };
+
+  const handleLikeJob = async () => {
+    setError("");
+    const originalJob = job;
+
+    setJob((currentJob) => toggleJobLike(currentJob));
+
+    try {
+      await likeJob(job.id);
+    } catch (likeError) {
+      setJob(originalJob);
+      setError(getErrorMessage(likeError, "Unable to update this like."));
+    }
+  };
+
+  const handleCreateComment = async (event) => {
+    event.preventDefault();
+
+    if (!commentContent.trim()) {
+      setError("Comment content is required.");
+      return;
+    }
+
+    setCommenting(true);
+    setError("");
+
+    try {
+      const createdComment = await createJobComment(job.id, { content: commentContent.trim() });
+      setComments((currentComments) => [...currentComments, createdComment]);
+      setCommentContent("");
+    } catch (commentError) {
+      setError(getErrorMessage(commentError, "Unable to add this comment."));
+    } finally {
+      setCommenting(false);
     }
   };
 
@@ -276,6 +398,18 @@ const JobDetails = () => {
         {success && <div className="form-success">{success}</div>}
         {error && <div className="form-error">{error}</div>}
 
+        <div className="job-social-actions">
+          <button
+            className={`job-button job-button--secondary${job?.likedByCurrentUser ? " job-button--liked" : ""}`}
+            type="button"
+            onClick={handleLikeJob}
+            title={job?.likedByCurrentUser ? "Remove like" : "Like job"}
+          >
+            <Heart size={16} fill={job?.likedByCurrentUser ? "currentColor" : "none"} aria-hidden="true" />
+            {`${getLikes(job)} likes`}
+          </button>
+        </div>
+
         {isStudent && (
           <JobActions
             key={`${job?.id}-${isSaved}`}
@@ -346,6 +480,51 @@ const JobDetails = () => {
             </ul>
           ) : (
             <p>Not provided</p>
+          )}
+        </section>
+
+        <section className="job-comments" id="job-comments" aria-labelledby="job-comments-heading">
+          <div className="job-comments__header">
+            <h2 id="job-comments-heading">Comments</h2>
+            <span>{comments.length}</span>
+          </div>
+
+          <form className="job-comment-form" aria-label="Job comment form" onSubmit={handleCreateComment}>
+            <label>
+              Comment
+              <textarea
+                name="content"
+                value={commentContent}
+                onChange={(event) => setCommentContent(event.target.value)}
+                placeholder="Share a question or note about this job"
+                rows={3}
+                disabled={commenting}
+              />
+            </label>
+            <div className="job-form__actions">
+              <button type="submit" disabled={commenting}>
+                {commenting ? "Posting..." : "Post"}
+              </button>
+            </div>
+          </form>
+
+          {commentsError && <div className="form-error">{commentsError}</div>}
+          {commentsLoading ? (
+            <div className="jobs-state">Loading comments...</div>
+          ) : comments.length > 0 ? (
+            <div className="job-comments-list">
+              {comments.map((comment, index) => (
+                <article className="job-comment" key={comment.id ?? `${comment.authorEmail}-${comment.createdAt}-${index}`}>
+                  <div className="job-comment__meta">
+                    <strong>{comment.authorEmail || "Unknown author"}</strong>
+                    <span>{formatDateTime(comment.createdAt)}</span>
+                  </div>
+                  <p>{comment.content || "No content provided."}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="jobs-state">No comments yet.</div>
           )}
         </section>
       </article>

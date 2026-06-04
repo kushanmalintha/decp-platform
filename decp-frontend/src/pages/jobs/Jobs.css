@@ -9,7 +9,9 @@
 .job-details__topline,
 .jobs-pagination,
 .application-card__header,
-.job-management-actions {
+.job-management-actions,
+.job-comments__header,
+.job-comment__meta {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -25,7 +27,8 @@
 .job-card__header p,
 .application-card__header p,
 .job-details__topline span,
-.job-details__section p {
+.job-details__section p,
+.job-comment__meta span {
   margin: 6px 0 0;
   color: #667085;
 }
@@ -119,6 +122,25 @@
   display: grid;
   gap: 18px;
   padding: 20px;
+}
+
+.job-card--clickable {
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.job-card--clickable:hover,
+.job-card--clickable:focus-visible {
+  border-color: #98a2b3;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+  outline: none;
+}
+
+.job-card__actions,
+.job-social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .recruiter-dashboard-card {
@@ -231,6 +253,7 @@
   min-height: 42px;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   border-radius: 6px;
   padding: 0 16px;
   font-weight: 700;
@@ -241,6 +264,12 @@
   border: 1px solid #c8d0df;
   color: #344054;
   background: #ffffff;
+}
+
+.job-button--liked {
+  border-color: #f7b7c8;
+  color: #c11574;
+  background: #fff1f7;
 }
 
 .job-actions {
@@ -297,7 +326,8 @@
   gap: 10px;
 }
 
-.job-details__section h2 {
+.job-details__section h2,
+.job-comments__header h2 {
   margin: 0;
   font-size: 18px;
 }
@@ -326,6 +356,70 @@
   padding: 6px 10px;
   font-size: 14px;
   font-weight: 700;
+}
+
+.job-comments,
+.job-comment-form,
+.job-comments-list,
+.job-comment {
+  display: grid;
+  gap: 12px;
+}
+
+.job-comments {
+  border-top: 1px solid #d8deea;
+  padding-top: 20px;
+}
+
+.job-comments__header {
+  align-items: center;
+}
+
+.job-comments__header span {
+  color: #475467;
+  font-weight: 700;
+}
+
+.job-comment-form label {
+  display: grid;
+  gap: 8px;
+  color: #344054;
+  font-weight: 700;
+}
+
+.job-comment-form textarea {
+  width: 100%;
+  min-height: 84px;
+  border: 1px solid #c8d0df;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.job-comment {
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.job-comment__meta {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.job-comment__meta strong {
+  overflow-wrap: anywhere;
+}
+
+.job-comment p {
+  margin: 0;
+  color: #172033;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 980px) {

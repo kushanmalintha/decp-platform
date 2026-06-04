@@ -1,7 +1,9 @@
 package com.decp.job_service.service;
 
 import com.decp.job_service.dto.CreateJobRequest;
+import com.decp.job_service.dto.CreateJobCommentRequest;
 import com.decp.job_service.dto.JobApplicationResponse;
+import com.decp.job_service.dto.JobCommentResponse;
 import com.decp.job_service.dto.JobResponse;
 import com.decp.job_service.dto.RecruiterDashboardResponse;
 import com.decp.job_service.dto.UpdateApplicationStatusRequest;
@@ -65,6 +67,8 @@ public class JobService {
     private final JobRepository jobRepository;
     private final JobApplicationRepository applicationRepository;
     private final SavedJobRepository savedJobRepository;
+    private final JobLikeRepository jobLikeRepository;
+    private final JobCommentRepository jobCommentRepository;
     private final JobMapper jobMapper;
     private final JobApplicationMapper jobApplicationMapper;
     private final JobEventProducer jobEventProducer;
@@ -131,13 +135,24 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public Page<JobResponse> getAllJobs(Pageable pageable) {
+        return getAllJobs(pageable, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getAllJobs(Pageable pageable, String requesterEmail) {
         return jobRepository.findAll(pageable)
-                .map(jobMapper::toJobResponse);
+                .map(job -> toJobResponseWithLikes(job, requesterEmail));
     }
 
     @Transactional(readOnly = true)
     public JobResponse getJobById(Long jobId) {
-        return jobMapper.toJobResponse(findJob(jobId));
+        return getJobById(jobId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public JobResponse getJobById(Long jobId, String requesterEmail) {
+        Job job = findJob(jobId);
+        return toJobResponseWithLikes(job, requesterEmail);
     }
 
     @Transactional(readOnly = true)
@@ -150,6 +165,29 @@ public class JobService {
             String location,
             ExperienceLevel experienceLevel,
             Pageable pageable) {
+        return getAllJobs(
+                keyword,
+                status,
+                postedByEmail,
+                jobType,
+                workMode,
+                location,
+                experienceLevel,
+                pageable,
+                null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getAllJobs(
+            String keyword,
+            JobStatus status,
+            String postedByEmail,
+            JobType jobType,
+            WorkMode workMode,
+            String location,
+            ExperienceLevel experienceLevel,
+            Pageable pageable,
+            String requesterEmail) {
         if (isBlank(keyword)
                 && status == null
                 && isBlank(postedByEmail)
@@ -157,7 +195,7 @@ public class JobService {
                 && workMode == null
                 && isBlank(location)
                 && experienceLevel == null) {
-            return getAllJobs(pageable);
+            return getAllJobs(pageable, requesterEmail);
         }
 
         log.info(
@@ -167,7 +205,55 @@ public class JobService {
                         JobSpecifications.withFilters(
                                 keyword, status, postedByEmail, jobType, workMode, location, experienceLevel),
                         pageable)
-                .map(jobMapper::toJobResponse);
+                .map(job -> toJobResponseWithLikes(job, requesterEmail));
+    }
+
+    @Transactional
+    public JobResponse likeJob(Long jobId, String requesterEmail) {
+        Job job = findJob(jobId);
+        String normalizedEmail = normalizeEmail(requesterEmail);
+        boolean likedByCurrentUser;
+        var existingLike = jobLikeRepository.findByJobIdAndUserEmailIgnoreCase(jobId, normalizedEmail);
+
+        if (existingLike.isPresent()) {
+            jobLikeRepository.delete(existingLike.get());
+            likedByCurrentUser = false;
+        } else {
+            JobLike jobLike = JobLike.builder()
+                    .jobId(jobId)
+                    .userEmail(normalizedEmail)
+                    .build();
+            jobLikeRepository.save(jobLike);
+            likedByCurrentUser = true;
+        }
+
+        return jobMapper.toJobResponse(job, likedByCurrentUser, jobLikeRepository.countByJobId(jobId));
+    }
+
+    @Transactional
+    public JobCommentResponse addComment(Long jobId, String authorEmail, CreateJobCommentRequest request) {
+        findJob(jobId);
+
+        if (request == null || isBlank(request.getContent())) {
+            throw new InvalidJobOperationException("Comment content is required");
+        }
+
+        JobComment comment = JobComment.builder()
+                .jobId(jobId)
+                .authorEmail(normalizeEmail(authorEmail))
+                .content(request.getContent().trim())
+                .build();
+
+        return jobMapper.toJobCommentResponse(jobCommentRepository.save(comment));
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobCommentResponse> getComments(Long jobId) {
+        findJob(jobId);
+        return jobCommentRepository.findByJobIdOrderByCreatedAtAsc(jobId)
+                .stream()
+                .map(jobMapper::toJobCommentResponse)
+                .toList();
     }
 
     @Transactional
@@ -645,6 +731,23 @@ public class JobService {
 
     private String normalizeRole(String role) {
         return role == null ? "" : role.trim().toUpperCase();
+    }
+
+    private boolean hasLiked(Long jobId, String requesterEmail) {
+        return jobId != null
+                && !isBlank(requesterEmail)
+                && jobLikeRepository.existsByJobIdAndUserEmailIgnoreCase(jobId, normalizeEmail(requesterEmail));
+    }
+
+    private JobResponse toJobResponseWithLikes(Job job, String requesterEmail) {
+        return jobMapper.toJobResponse(
+                job,
+                hasLiked(job.getId(), requesterEmail),
+                jobLikeRepository.countByJobId(job.getId()));
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 
     private boolean isBlank(String value) {
