@@ -196,16 +196,11 @@ const JobApplications = () => {
               <div className="application-card__header">
                 <div>
                   <h2>{formatValue(application.studentEmail ?? application.applicantEmail)}</h2>
-                  <p>Job #{formatValue(application.jobId ?? id)}</p>
                 </div>
                 <ApplicationStatusBadge status={application.status} />
               </div>
 
               <dl className="application-card__meta">
-                <div>
-                  <dt>Job ID</dt>
-                  <dd>{formatValue(application.jobId ?? id)}</dd>
-                </div>
                 <div>
                   <dt>Applicant Email</dt>
                   <dd>{formatValue(application.studentEmail ?? application.applicantEmail)}</dd>

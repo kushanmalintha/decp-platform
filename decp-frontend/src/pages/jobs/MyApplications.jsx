@@ -100,17 +100,13 @@ const MyApplications = () => {
             <article className="application-card" key={application.id ?? `${application.jobId}-${application.appliedAt}`}>
               <div className="application-card__header">
                 <div>
-                  <h2>Job #{formatValue(application.jobId)}</h2>
+                  <h2>Application</h2>
                   <p>{formatValue(application.applicantEmail ?? application.studentEmail)}</p>
                 </div>
                 <ApplicationStatusBadge status={application.status} />
               </div>
 
               <dl className="application-card__meta">
-                <div>
-                  <dt>Job ID</dt>
-                  <dd>{formatValue(application.jobId)}</dd>
-                </div>
                 <div>
                   <dt>Applicant Email</dt>
                   <dd>{formatValue(application.applicantEmail ?? application.studentEmail)}</dd>
