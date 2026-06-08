@@ -100,7 +100,7 @@ public class JobService {
 
         jobEventProducer.sendJobCreatedEvent(toJobCreatedEvent(savedJob));
 
-        return jobMapper.toJobResponse(savedJob);
+        return toJobResponseWithLikes(savedJob, email);
     }
 
     @Transactional
@@ -130,7 +130,7 @@ public class JobService {
 
         log.info("Job updated successfully jobId={} requesterEmail={} postedByEmail={}",
                 savedJob.getId(), requesterEmail, savedJob.getPostedByEmail());
-        return jobMapper.toJobResponse(savedJob);
+        return toJobResponseWithLikes(savedJob, requesterEmail);
     }
 
     @Transactional(readOnly = true)
@@ -227,7 +227,11 @@ public class JobService {
             likedByCurrentUser = true;
         }
 
-        return jobMapper.toJobResponse(job, likedByCurrentUser, jobLikeRepository.countByJobId(jobId));
+        return jobMapper.toJobResponse(
+                job,
+                likedByCurrentUser,
+                jobLikeRepository.countByJobId(jobId),
+                jobCommentRepository.countByJobId(jobId));
     }
 
     @Transactional
@@ -282,7 +286,7 @@ public class JobService {
         }
 
         log.info("Job saved successfully jobId={} studentEmail={}", jobId, studentEmail);
-        return jobMapper.toJobResponse(job);
+        return toJobResponseWithLikes(job, studentEmail);
     }
 
     @Transactional
@@ -309,7 +313,7 @@ public class JobService {
         log.info("Retrieving saved jobs studentEmail={} page={} size={}",
                 studentEmail, pageable.getPageNumber(), pageable.getPageSize());
         Page<JobResponse> savedJobs = savedJobRepository.findByStudentEmailOrderBySavedAtDesc(studentEmail, pageable)
-                .map(savedJob -> jobMapper.toJobResponse(findJob(savedJob.getJobId())));
+                .map(savedJob -> toJobResponseWithLikes(findJob(savedJob.getJobId()), studentEmail));
 
         log.info("Saved jobs retrieved studentEmail={} count={} total={}",
                 studentEmail, savedJobs.getNumberOfElements(), savedJobs.getTotalElements());
@@ -326,7 +330,7 @@ public class JobService {
 
         if (job.getStatus() == JobStatus.CLOSED) {
             log.info("Job close requested for already closed job jobId={} requesterEmail={}", jobId, requesterEmail);
-            return jobMapper.toJobResponse(job);
+            return toJobResponseWithLikes(job, requesterEmail);
         }
 
         job.setStatus(JobStatus.CLOSED);
@@ -346,7 +350,7 @@ public class JobService {
 
         log.info("Job closed successfully jobId={} requesterEmail={} postedByEmail={}",
                 savedJob.getId(), requesterEmail, savedJob.getPostedByEmail());
-        return jobMapper.toJobResponse(savedJob);
+        return toJobResponseWithLikes(savedJob, requesterEmail);
     }
 
     public JobApplicationResponse applyForJob(Long jobId, String studentEmail) {
@@ -743,7 +747,8 @@ public class JobService {
         return jobMapper.toJobResponse(
                 job,
                 hasLiked(job.getId(), requesterEmail),
-                jobLikeRepository.countByJobId(job.getId()));
+                jobLikeRepository.countByJobId(job.getId()),
+                jobCommentRepository.countByJobId(job.getId()));
     }
 
     private String normalizeEmail(String email) {

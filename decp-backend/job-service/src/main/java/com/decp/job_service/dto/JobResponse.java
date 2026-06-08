@@ -33,6 +33,7 @@ public class JobResponse {
     private ExperienceLevel experienceLevel;
     private JobStatus status;
     private int likes;
+    private int commentCount;
     private boolean likedByCurrentUser;
     private OffsetDateTime createdAt;
 }

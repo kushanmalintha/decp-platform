@@ -16,14 +16,18 @@ import java.util.ArrayList;
 public class JobMapper {
 
     public JobResponse toJobResponse(Job job) {
-        return toJobResponse(job, false, 0);
+        return toJobResponse(job, false, 0, 0);
     }
 
     public JobResponse toJobResponse(Job job, boolean likedByCurrentUser) {
-        return toJobResponse(job, likedByCurrentUser, 0);
+        return toJobResponse(job, likedByCurrentUser, 0, 0);
     }
 
     public JobResponse toJobResponse(Job job, boolean likedByCurrentUser, long likes) {
+        return toJobResponse(job, likedByCurrentUser, likes, 0);
+    }
+
+    public JobResponse toJobResponse(Job job, boolean likedByCurrentUser, long likes, long commentCount) {
         if (job == null) {
             return null;
         }
@@ -47,6 +51,7 @@ public class JobMapper {
                 .experienceLevel(job.getExperienceLevel())
                 .status(job.getStatus() == null ? JobStatus.OPEN : job.getStatus())
                 .likes(Math.toIntExact(likes))
+                .commentCount(Math.toIntExact(commentCount))
                 .likedByCurrentUser(likedByCurrentUser)
                 .createdAt(toUtcOffsetDateTime(job.getCreatedAt()))
                 .build();

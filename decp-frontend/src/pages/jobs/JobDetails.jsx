@@ -406,7 +406,7 @@ const JobDetails = () => {
             title={job?.likedByCurrentUser ? "Remove like" : "Like job"}
           >
             <Heart size={16} fill={job?.likedByCurrentUser ? "currentColor" : "none"} aria-hidden="true" />
-            {`${getLikes(job)} likes`}
+            {getLikes(job)}
           </button>
         </div>
 

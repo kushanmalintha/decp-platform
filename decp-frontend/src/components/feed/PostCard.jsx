@@ -24,6 +24,7 @@ const formatDateTime = (value) => {
 };
 
 const getLikes = (post) => Number(post?.likes ?? post?.likeCount ?? 0);
+const getCommentCount = (post) => Number(post?.commentCount ?? post?.commentsCount ?? 0);
 const isLikedByCurrentUser = (post) => Boolean(post?.likedByCurrentUser);
 
 const PostCard = ({
@@ -71,11 +72,11 @@ const PostCard = ({
           title={likedByCurrentUser ? "Remove like" : "Like post"}
         >
           <Heart size={16} fill={likedByCurrentUser ? "currentColor" : "none"} aria-hidden="true" />
-          {`${getLikes(post)} likes`}
+          {getLikes(post)}
         </button>
-        <Link className="feed-button feed-button--secondary" to={`/feed/posts/${post?.id}`}>
+        <Link className="feed-button feed-button--secondary" to={`/feed/posts/${post?.id}`} title="View comments">
           <MessageCircle size={16} aria-hidden="true" />
-          View details
+          {getCommentCount(post)}
         </Link>
         {canEdit && (
           <button

@@ -76,13 +76,16 @@ public class FeedService {
 
     public Page<PostResponse> getAllPosts(Pageable pageable, String requesterEmail) {
         return postRepository.findAll(pageable)
-                .map(post -> feedMapper.toPostResponse(post, hasLiked(post.getId(), requesterEmail)));
+                .map(post -> feedMapper.toPostResponse(
+                        post,
+                        hasLiked(post.getId(), requesterEmail),
+                        commentRepository.countByPostId(post.getId())));
     }
 
     public PostResponse getPostById(Long postId, String requesterEmail) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found with id: " + postId));
-        return feedMapper.toPostResponse(post, hasLiked(postId, requesterEmail));
+        return feedMapper.toPostResponse(post, hasLiked(postId, requesterEmail), commentRepository.countByPostId(postId));
     }
 
     public PostResponse updatePost(Long postId, UpdateFeedPostRequest request, String requesterEmail, String requesterRole) {
@@ -110,7 +113,7 @@ public class FeedService {
         Post savedPost = postRepository.save(post);
 
         log.info("Feed post updated successfully: postId={}, requesterEmail={}", postId, requesterEmail);
-        return feedMapper.toPostResponse(savedPost);
+        return feedMapper.toPostResponse(savedPost, hasLiked(postId, requesterEmail), commentRepository.countByPostId(postId));
     }
 
     @Transactional
@@ -160,7 +163,7 @@ public class FeedService {
         }
 
         Post savedPost = postRepository.save(post);
-        return feedMapper.toPostResponse(savedPost, likedByCurrentUser);
+        return feedMapper.toPostResponse(savedPost, likedByCurrentUser, commentRepository.countByPostId(postId));
     }
 
     public CommentResponse addComment(Long postId, String email, CreateCommentRequest request) {

@@ -31,6 +31,7 @@ const formatValue = (value) => {
 };
 
 const getLikes = (job) => Number(job?.likes ?? job?.likeCount ?? 0);
+const getCommentCount = (job) => Number(job?.commentCount ?? job?.commentsCount ?? 0);
 const isLikedByCurrentUser = (job) => Boolean(job?.likedByCurrentUser);
 
 const isInteractiveTarget = (target) => Boolean(target.closest("a, button, input, select, textarea, label"));
@@ -109,13 +110,13 @@ const JobCard = ({ job, onLike, children }) => {
               title={isLikedByCurrentUser(job) ? "Remove like" : "Like job"}
             >
               <Heart size={16} fill={isLikedByCurrentUser(job) ? "currentColor" : "none"} aria-hidden="true" />
-              {`${getLikes(job)} likes`}
+              {getLikes(job)}
             </button>
           )}
           {job?.id && (
-            <Link className="job-button job-button--secondary" to={`/jobs/${job.id}#job-comments`}>
+            <Link className="job-button job-button--secondary" to={`/jobs/${job.id}#job-comments`} title="View comments">
               <MessageCircle size={16} aria-hidden="true" />
-              Add comment
+              {getCommentCount(job)}
             </Link>
           )}
         </div>

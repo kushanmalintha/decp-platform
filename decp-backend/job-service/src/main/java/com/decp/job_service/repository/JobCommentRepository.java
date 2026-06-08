@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface JobCommentRepository extends JpaRepository<JobComment, Long> {
     List<JobComment> findByJobIdOrderByCreatedAtAsc(Long jobId);
+    long countByJobId(Long jobId);
 }

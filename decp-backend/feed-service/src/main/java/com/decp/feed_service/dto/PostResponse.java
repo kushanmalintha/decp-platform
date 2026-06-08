@@ -16,6 +16,7 @@ public class PostResponse {
     private String content;
     private String authorEmail;
     private int likes;
+    private int commentCount;
     private boolean likedByCurrentUser;
     private OffsetDateTime createdAt;
     private FeedPostSourceType sourceType;

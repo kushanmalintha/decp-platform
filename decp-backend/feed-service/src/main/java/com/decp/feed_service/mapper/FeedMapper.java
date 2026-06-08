@@ -14,10 +14,14 @@ import java.time.ZoneOffset;
 public class FeedMapper {
 
     public PostResponse toPostResponse(Post post) {
-        return toPostResponse(post, false);
+        return toPostResponse(post, false, 0);
     }
 
     public PostResponse toPostResponse(Post post, boolean likedByCurrentUser) {
+        return toPostResponse(post, likedByCurrentUser, 0);
+    }
+
+    public PostResponse toPostResponse(Post post, boolean likedByCurrentUser, long commentCount) {
         if (post == null) {
             return null;
         }
@@ -27,6 +31,7 @@ public class FeedMapper {
                 .content(post.getContent())
                 .authorEmail(post.getAuthorEmail())
                 .likes(post.getLikes())
+                .commentCount(Math.toIntExact(commentCount))
                 .likedByCurrentUser(likedByCurrentUser)
                 .createdAt(toUtcOffsetDateTime(post.getCreatedAt()))
                 .sourceType(post.getSourceType() == null

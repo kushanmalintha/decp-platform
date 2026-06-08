@@ -63,6 +63,8 @@ const togglePostLike = (post) => ({
   likedByCurrentUser: !post?.likedByCurrentUser,
 });
 
+const setPostCommentCount = (post, commentCount) => (post ? { ...post, commentCount } : post);
+
 const PostDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -131,7 +133,9 @@ const PostDetails = () => {
         const commentsData = await getComments(id);
 
         if (isMounted) {
-          setComments(normalizeComments(commentsData));
+          const normalizedComments = normalizeComments(commentsData);
+          setComments(normalizedComments);
+          setPost((currentPost) => setPostCommentCount(currentPost, normalizedComments.length));
         }
       } catch (loadError) {
         if (isMounted) {
@@ -217,10 +221,16 @@ const PostDetails = () => {
       const createdComment = await createComment(post.id, data);
 
       if (createdComment && typeof createdComment === "object" && !Array.isArray(createdComment)) {
-        setComments((currentComments) => [...currentComments, createdComment]);
+        setComments((currentComments) => {
+          const nextComments = [...currentComments, createdComment];
+          setPost((currentPost) => setPostCommentCount(currentPost, nextComments.length));
+          return nextComments;
+        });
       } else {
         const commentsData = await getComments(post.id);
-        setComments(normalizeComments(commentsData));
+        const normalizedComments = normalizeComments(commentsData);
+        setComments(normalizedComments);
+        setPost((currentPost) => setPostCommentCount(currentPost, normalizedComments.length));
       }
 
       return true;
