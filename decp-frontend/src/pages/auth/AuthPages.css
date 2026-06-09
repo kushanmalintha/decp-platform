@@ -9,11 +9,11 @@
   display: grid;
   width: min(100%, 420px);
   gap: 18px;
-  border: 1px solid #d8deea;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   padding: 28px;
-  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .auth-form h1 {
@@ -23,7 +23,7 @@
 
 .auth-form p {
   margin: 0;
-  color: #667085;
+  color: var(--color-text-muted);
 }
 
 .auth-form label {
@@ -35,8 +35,10 @@
 .auth-form input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #c8d0df;
-  border-radius: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
   padding: 0 12px;
 }
 

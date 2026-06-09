@@ -160,7 +160,7 @@ body.sidebar-drawer-open {
   justify-content: space-between;
   gap: var(--space-5);
   border-bottom: 1px solid var(--color-border);
-  background: rgb(255 255 255 / 96%);
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   padding: var(--space-4) var(--space-8);
 }
 
@@ -225,7 +225,7 @@ body.sidebar-drawer-open {
   right: 0;
   z-index: 30;
   display: grid;
-  width: 220px;
+  width: 240px;
   gap: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -237,7 +237,53 @@ body.sidebar-drawer-open {
 
 .topbar-settings__item {
   width: 100%;
+  min-height: 44px;
   justify-content: flex-start;
+}
+
+.topbar-settings__item--toggle {
+  justify-content: space-between;
+}
+
+.topbar-settings__item-main {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topbar-settings__switch {
+  position: relative;
+  display: inline-flex;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  padding: 2px;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.topbar-settings__switch span {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-base);
+}
+
+.topbar-settings__item[aria-checked="true"] .topbar-settings__switch {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.topbar-settings__item[aria-checked="true"] .topbar-settings__switch span {
+  transform: translateX(16px);
 }
 
 .content {

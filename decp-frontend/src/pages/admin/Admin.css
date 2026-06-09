@@ -11,14 +11,14 @@
 
 .admin-page__header p {
   margin: 6px 0 0;
-  color: #667085;
+  color: var(--color-text-muted);
 }
 
 .admin-note {
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  color: #1e3a8a;
-  background: #eff6ff;
+  border: 1px solid var(--color-info-soft);
+  border-radius: var(--radius-lg);
+  color: var(--color-info);
+  background: var(--color-info-soft);
   padding: 12px 14px;
   line-height: 1.5;
 }
@@ -26,9 +26,9 @@
 .admin-role-form {
   display: grid;
   gap: 18px;
-  border: 1px solid #d8deea;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   padding: 24px;
 }
 
@@ -42,9 +42,10 @@
 .admin-role-form select {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #c8d0df;
-  border-radius: 6px;
-  background: #ffffff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
   font: inherit;
   padding: 0 12px;
 }

@@ -348,9 +348,9 @@
 }
 
 .job-button--liked {
-  border-color: #f9a8d4;
-  color: #be185d;
-  background: #fdf2f8;
+  border-color: var(--color-liked-border);
+  color: var(--color-liked);
+  background: var(--color-liked-soft);
 }
 
 .job-actions {

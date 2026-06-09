@@ -10,9 +10,11 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Moon,
   PlusCircle,
   Settings,
   ShieldCheck,
+  Sun,
   UserRound,
   X,
 } from "lucide-react";
@@ -21,6 +23,16 @@ import { useAuth } from "../auth/useAuth";
 import NotificationBadge from "../components/notifications/NotificationBadge";
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
 import "./MainLayout.css";
+
+const THEME_STORAGE_KEY = "decp-theme";
+
+const getInitialTheme = () => {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+};
 
 const getPageMeta = (pathname) => {
   if (pathname === "/dashboard") {
@@ -157,12 +169,19 @@ const MainLayout = () => {
   const settingsMenuRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(getInitialTheme);
   const normalizedRole = user?.role?.toUpperCase();
   const isStudent = normalizedRole === "STUDENT";
   const isAlumni = normalizedRole === "ALUMNI";
   const isAdmin = normalizedRole === "ADMIN";
   const canCreateJob = isAlumni || isAdmin;
+  const isDarkTheme = theme === "dark";
   const pageMeta = useMemo(() => getPageMeta(location.pathname), [location.pathname]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     document.body.classList.toggle("sidebar-drawer-open", sidebarOpen);
@@ -202,6 +221,10 @@ const MainLayout = () => {
     setSettingsMenuOpen(false);
     await logout();
     navigate("/login", { replace: true });
+  };
+
+  const handleThemeToggle = () => {
+    setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
   };
 
   const navSections = [
@@ -342,6 +365,21 @@ const MainLayout = () => {
 
               {settingsMenuOpen && (
                 <div className="topbar-settings__menu" role="menu" aria-label="Settings menu">
+                  <button
+                    className="topbar-settings__item topbar-settings__item--toggle ui-button ui-button--secondary"
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={isDarkTheme}
+                    onClick={handleThemeToggle}
+                  >
+                    <span className="topbar-settings__item-main">
+                      {isDarkTheme ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+                      Dark Mode
+                    </span>
+                    <span className="topbar-settings__switch" aria-hidden="true">
+                      <span />
+                    </span>
+                  </button>
                   <button
                     className="topbar-settings__item ui-button ui-button--secondary"
                     type="button"
