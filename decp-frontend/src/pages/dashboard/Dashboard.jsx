@@ -36,6 +36,11 @@ const DASHBOARD_FEED_QUERY = {
   sort: "createdAt,desc",
 };
 
+const DASHBOARD_SAVED_JOBS_QUERY = {
+  page: 0,
+  size: 4,
+};
+
 const normalizeRole = (role) => role?.toUpperCase?.() ?? "";
 
 const normalizePage = (pageData) => {
@@ -157,7 +162,7 @@ const Dashboard = () => {
 
       if (isStudent) {
         requests.push(
-          { key: "savedJobsPage", promise: getSavedJobs({ page: 0, size: 4, sort: "createdAt,desc" }) },
+          { key: "savedJobsPage", promise: getSavedJobs(DASHBOARD_SAVED_JOBS_QUERY) },
           { key: "applications", promise: getMyApplications() },
         );
       }

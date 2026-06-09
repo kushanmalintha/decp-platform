@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -310,9 +311,15 @@ public class JobService {
     public Page<JobResponse> getSavedJobs(String studentEmail, String role, Pageable pageable) {
         validateSavedJobStudentRole(role);
 
+        // Saved jobs are ordered by SavedJob.savedAt, so client-side JobResponse sort fields must not reach this query.
+        Pageable savedJobsPageable = pageable.isPaged()
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize())
+                : Pageable.unpaged();
+        String pageNumber = savedJobsPageable.isPaged() ? String.valueOf(savedJobsPageable.getPageNumber()) : "unpaged";
+        String pageSize = savedJobsPageable.isPaged() ? String.valueOf(savedJobsPageable.getPageSize()) : "unpaged";
         log.info("Retrieving saved jobs studentEmail={} page={} size={}",
-                studentEmail, pageable.getPageNumber(), pageable.getPageSize());
-        Page<JobResponse> savedJobs = savedJobRepository.findByStudentEmailOrderBySavedAtDesc(studentEmail, pageable)
+                studentEmail, pageNumber, pageSize);
+        Page<JobResponse> savedJobs = savedJobRepository.findByStudentEmailOrderBySavedAtDesc(studentEmail, savedJobsPageable)
                 .map(savedJob -> toJobResponseWithLikes(findJob(savedJob.getJobId()), studentEmail));
 
         log.info("Saved jobs retrieved studentEmail={} count={} total={}",
