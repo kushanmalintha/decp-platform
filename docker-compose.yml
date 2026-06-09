@@ -284,6 +284,20 @@ services:
       notification-service:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./decp-frontend
+    image: decp-frontend:latest
+    container_name: decp-frontend
+    restart: unless-stopped
+    env_file:
+      - ./decp-frontend/.env
+    ports:
+      - "5173:5173"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
 volumes:
   auth-db-data:
   user-db-data:

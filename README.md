@@ -115,6 +115,9 @@ This starts:
 - Kafka on `9092`
 - PostgreSQL databases on `5433` to `5437`
 - Backend services on `8080` to `8085`
+- Frontend on `5173`
+
+Open the frontend at `http://localhost:5173`. The frontend calls the API gateway at `http://localhost:8080`.
 
 Stop the stack:
 
@@ -218,4 +221,4 @@ Spring JPA is currently configured with `ddl-auto: update`, so schemas are updat
 
 - Keep `.env` files out of version control because they contain database credentials, JWT secrets, and mail credentials.
 - Use the API gateway URL from the frontend instead of calling backend services directly.
-- If Docker containers fail to start, check that ports `2181`, `9092`, `5433-5437`, and `8080-8085` are free.
+- If Docker containers fail to start, check that ports `2181`, `9092`, `5433-5437`, `8080-8085`, and `5173` are free.
