@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -135,14 +135,6 @@ const getPageMeta = (pathname) => {
     };
   }
 
-  if (pathname.startsWith("/settings")) {
-    return {
-      title: "Settings",
-      eyebrow: "Account",
-      description: "Manage account security and preferences.",
-    };
-  }
-
   if (pathname.startsWith("/admin")) {
     return {
       title: "Admin Roles",
@@ -162,7 +154,9 @@ const MainLayout = () => {
   const { logout, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const settingsMenuRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const normalizedRole = user?.role?.toUpperCase();
   const isStudent = normalizedRole === "STUDENT";
   const isAlumni = normalizedRole === "ALUMNI";
@@ -178,7 +172,34 @@ const MainLayout = () => {
     };
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    if (!settingsMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!settingsMenuRef.current?.contains(event.target)) {
+        setSettingsMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setSettingsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [settingsMenuOpen]);
+
   const handleLogout = async () => {
+    setSettingsMenuOpen(false);
     await logout();
     navigate("/login", { replace: true });
   };
@@ -213,10 +234,7 @@ const MainLayout = () => {
     },
     {
       label: "Account",
-      items: [
-        { to: "/profile", label: "Profile", icon: UserRound },
-        { to: "/settings", label: "Settings", icon: Settings },
-      ],
+      items: [{ to: "/profile", label: "Profile", icon: UserRound }],
     },
   ].filter((section) => section.items.length > 0);
 
@@ -224,7 +242,15 @@ const MainLayout = () => {
     const NavIcon = item.icon;
 
     return (
-      <NavLink className="sidebar-nav__item" key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}>
+      <NavLink
+        className="sidebar-nav__item"
+        key={item.to}
+        to={item.to}
+        onClick={() => {
+          setSidebarOpen(false);
+          setSettingsMenuOpen(false);
+        }}
+      >
         <span className="sidebar-nav__item-main">
           <NavIcon size={18} aria-hidden="true" />
           <span>{item.label}</span>
@@ -283,7 +309,10 @@ const MainLayout = () => {
               aria-expanded={sidebarOpen}
               aria-label="Open navigation"
               title="Open navigation"
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => {
+                setSidebarOpen(true);
+                setSettingsMenuOpen(false);
+              }}
             >
               <Menu size={18} aria-hidden="true" />
             </button>
@@ -295,15 +324,36 @@ const MainLayout = () => {
           </div>
 
           <div className="topbar-actions">
-            <div className="topbar-user" aria-label="Signed in user">
-              <p className="user-email">{user?.email}</p>
-              <p className="user-role">{user?.role}</p>
-            </div>
             <NotificationDropdown />
-            <button className="topbar-logout ui-button ui-button--secondary" type="button" onClick={handleLogout}>
-              <LogOut size={17} aria-hidden="true" />
-              Logout
-            </button>
+            <div className="topbar-settings" ref={settingsMenuRef}>
+              <button
+                className={`topbar-settings__trigger ui-icon-button${
+                  settingsMenuOpen ? " topbar-settings__trigger--active" : ""
+                }`}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={settingsMenuOpen}
+                aria-label="Open settings menu"
+                title="Settings"
+                onClick={() => setSettingsMenuOpen((isOpen) => !isOpen)}
+              >
+                <Settings size={18} aria-hidden="true" />
+              </button>
+
+              {settingsMenuOpen && (
+                <div className="topbar-settings__menu" role="menu" aria-label="Settings menu">
+                  <button
+                    className="topbar-settings__item ui-button ui-button--secondary"
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                  >
+                    <LogOut size={17} aria-hidden="true" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

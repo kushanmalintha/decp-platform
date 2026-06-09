@@ -109,24 +109,6 @@
   flex-wrap: wrap;
 }
 
-.notification-button {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 6px;
-  padding: 0 16px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.notification-button--secondary {
-  border: 1px solid #c8d0df;
-  color: #344054;
-  background: #ffffff;
-}
-
 .notification-state {
   padding: 16px;
   color: #475467;

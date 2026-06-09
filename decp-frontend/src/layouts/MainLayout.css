@@ -178,9 +178,7 @@ body.sidebar-drawer-open {
 }
 
 .topbar-eyebrow,
-.topbar-description,
-.user-email,
-.user-role {
+.topbar-description {
   margin: 0;
 }
 
@@ -205,30 +203,41 @@ body.sidebar-drawer-open {
   gap: var(--space-3);
 }
 
-.topbar-user {
-  max-width: 260px;
-  border-right: 1px solid var(--color-border);
-  padding-right: var(--space-3);
-  text-align: right;
+.topbar-settings {
+  position: relative;
 }
 
-.user-email {
-  overflow: hidden;
-  color: var(--color-text);
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.topbar-settings__trigger {
+  position: relative;
+  z-index: 2;
 }
 
-.user-role {
-  color: var(--color-text-muted);
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: capitalize;
+.topbar-settings__trigger--active,
+.topbar-settings__trigger[aria-expanded="true"] {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
 }
 
-.topbar-logout {
-  white-space: nowrap;
+.topbar-settings__menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  width: 220px;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+  transform-origin: top right;
+}
+
+.topbar-settings__item {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .content {
@@ -310,24 +319,6 @@ body.sidebar-drawer-open {
   gap: var(--space-3);
 }
 
-.notification-dropdown__mark-all {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  gap: var(--space-2);
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text);
-  background: var(--color-surface);
-  padding: 0 10px;
-  font-size: 13px;
-}
-
-.notification-dropdown__mark-all:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-subtle);
-}
-
 .notification-dropdown__list {
   display: grid;
   gap: var(--space-2);
@@ -387,10 +378,6 @@ body.sidebar-drawer-open {
 
   .topbar {
     padding: var(--space-4) var(--space-6);
-  }
-
-  .topbar-user {
-    display: none;
   }
 
   .content {
@@ -483,12 +470,12 @@ body.sidebar-drawer-open {
     flex-wrap: wrap;
   }
 
-  .topbar-logout {
-    flex: 1 1 160px;
-  }
-
   .notification-dropdown__menu {
     right: auto;
     left: 0;
+  }
+
+  .topbar-settings__menu {
+    right: 0;
   }
 }

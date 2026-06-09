@@ -340,41 +340,6 @@
   gap: var(--space-3);
 }
 
-.profile-button {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  border-radius: var(--radius-md);
-  padding: 0 var(--space-4);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.profile-button--primary {
-  border: 1px solid transparent;
-  color: var(--color-text-inverse);
-  background: var(--color-primary);
-}
-
-.profile-button--primary:hover {
-  color: var(--color-text-inverse);
-  background: var(--color-primary-hover);
-}
-
-.profile-button--secondary {
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text);
-  background: var(--color-surface);
-}
-
-.profile-button--secondary:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-subtle);
-}
-
 .profile-state,
 .profile-success {
   border-radius: var(--radius-md);

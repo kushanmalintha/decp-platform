@@ -29,7 +29,12 @@
   font-size: 0.9rem;
 }
 
-.ui-button {
+.ui-button,
+.job-button,
+.feed-button,
+.profile-button,
+.notification-button,
+.notification-dropdown__mark-all {
   display: inline-flex;
   min-height: 42px;
   align-items: center;
@@ -38,17 +43,45 @@
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 0 var(--space-4);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.ui-button--secondary {
+.ui-button--primary,
+.job-button--primary,
+.profile-button--primary,
+.notification-button:not(.notification-button--secondary) {
+  border-color: transparent;
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+}
+
+.ui-button--primary:hover,
+.job-button--primary:hover,
+.profile-button--primary:hover,
+.notification-button:not(.notification-button--secondary):hover {
+  color: var(--color-text-inverse);
+  background: var(--color-primary-hover);
+}
+
+.ui-button--secondary,
+.job-button--secondary,
+.feed-button--secondary,
+.profile-button--secondary,
+.notification-button--secondary,
+.notification-dropdown__mark-all {
   border-color: var(--color-border-strong);
   color: var(--color-text);
   background: var(--color-surface);
 }
 
-.ui-button--secondary:hover {
+.ui-button--secondary:hover,
+.job-button--secondary:hover,
+.feed-button--secondary:hover,
+.profile-button--secondary:hover,
+.notification-button--secondary:hover,
+.notification-dropdown__mark-all:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-primary-subtle);
