@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../../api/userApi";
 import ProfileForm from "../../components/profile/ProfileForm";
@@ -80,6 +81,7 @@ const EditProfile = () => {
           <p>Keep your education, skills, and portfolio links up to date.</p>
         </div>
         <Link className="profile-button profile-button--secondary" to="/profile">
+          <ArrowLeft size={17} aria-hidden="true" />
           Back to Profile
         </Link>
       </div>
