@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MessageCircle, Newspaper, PlusCircle, RefreshCw } from "lucide-react";
 
 import { createPost, deletePost, getPosts, likePost, updatePost } from "../../api/feedApi";
 import { useAuth } from "../../auth/useAuth";
@@ -82,9 +83,12 @@ const togglePostLike = (post) => ({
   likedByCurrentUser: !post?.likedByCurrentUser,
 });
 
+const getSourceType = (post) => post?.sourceType?.toUpperCase?.() ?? "MANUAL";
+
 const Feed = () => {
   const { user } = useAuth();
   const [pageNumber, setPageNumber] = useState(DEFAULT_FEED_QUERY.page);
+  const [sourceFilter, setSourceFilter] = useState("ALL");
   const [reloadToken, setReloadToken] = useState(0);
   const [postsPage, setPostsPage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -231,6 +235,9 @@ const Feed = () => {
   };
 
   const posts = postsPage?.content ?? [];
+  const visiblePosts = posts.filter((post) => sourceFilter === "ALL" || getSourceType(post) === sourceFilter);
+  const manualCount = posts.filter((post) => getSourceType(post) === "MANUAL").length;
+  const jobCount = posts.filter((post) => getSourceType(post) === "JOB").length;
   const currentPage = postsPage?.number ?? pageNumber;
   const totalPages = postsPage?.totalPages;
   const isFirstPage = currentPage <= 0 || postsPage?.first;
@@ -239,16 +246,32 @@ const Feed = () => {
 
   return (
     <section className="feed-page">
-      <div className="feed-page__header">
+      <div className="feed-hero">
         <div>
-          <h1>Feed</h1>
-          <p>Follow updates from manual posts and job activity.</p>
+          <p className="feed-eyebrow">Engagement</p>
+          <h1>Follow department updates and career activity.</h1>
+          <p>Use the feed to keep up with discussions, announcements, and job-generated updates.</p>
         </div>
+        <button
+          className="feed-button feed-button--secondary"
+          type="button"
+          onClick={() => setReloadToken((token) => token + 1)}
+          disabled={loading}
+        >
+          <RefreshCw size={17} aria-hidden="true" />
+          Refresh
+        </button>
       </div>
 
       {canCreatePost(user) && (
         <section className="feed-composer" aria-labelledby="create-post-heading">
-          <h2 id="create-post-heading">Create Post</h2>
+          <div className="feed-composer__header">
+            <div>
+              <p className="feed-eyebrow">Share</p>
+              <h2 id="create-post-heading">Create Post</h2>
+            </div>
+            <PlusCircle size={20} aria-hidden="true" />
+          </div>
           <PostForm submitLabel="Create Post" submitting={creating} resetOnSuccess onSubmit={handleCreatePost} />
         </section>
       )}
@@ -257,12 +280,42 @@ const Feed = () => {
       {actionError && <div className="form-error">{actionError}</div>}
       {error && <div className="form-error">{error}</div>}
 
+      <div className="feed-summary" aria-label="Engagement feed summary">
+        <button
+          className={sourceFilter === "ALL" ? "is-active" : ""}
+          type="button"
+          onClick={() => setSourceFilter("ALL")}
+        >
+          <MessageCircle size={18} aria-hidden="true" />
+          <span>All Updates</span>
+          <strong>{posts.length}</strong>
+        </button>
+        <button
+          className={sourceFilter === "MANUAL" ? "is-active" : ""}
+          type="button"
+          onClick={() => setSourceFilter("MANUAL")}
+        >
+          <Newspaper size={18} aria-hidden="true" />
+          <span>Department Posts</span>
+          <strong>{manualCount}</strong>
+        </button>
+        <button
+          className={sourceFilter === "JOB" ? "is-active" : ""}
+          type="button"
+          onClick={() => setSourceFilter("JOB")}
+        >
+          <RefreshCw size={18} aria-hidden="true" />
+          <span>Career Updates</span>
+          <strong>{jobCount}</strong>
+        </button>
+      </div>
+
       {loading ? (
         <div className="feed-state">Loading feed posts...</div>
-      ) : posts.length > 0 ? (
+      ) : visiblePosts.length > 0 ? (
         <>
           <div className="feed-list">
-            {posts.map((post) => (
+            {visiblePosts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
@@ -310,7 +363,19 @@ const Feed = () => {
           </div>
         </>
       ) : (
-        <div className="feed-state">No feed posts yet.</div>
+        <div className="feed-empty">
+          <h2>No updates in this view</h2>
+          <p>
+            {posts.length > 0
+              ? "Try another feed filter to see available updates."
+              : "Posts, discussions, and job-generated updates will appear here when activity starts."}
+          </p>
+          {sourceFilter !== "ALL" && (
+            <button className="feed-button feed-button--secondary" type="button" onClick={() => setSourceFilter("ALL")}>
+              Show All Updates
+            </button>
+          )}
+        </div>
       )}
     </section>
   );

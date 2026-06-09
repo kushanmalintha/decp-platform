@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -169,6 +169,14 @@ const MainLayout = () => {
   const isAdmin = normalizedRole === "ADMIN";
   const canCreateJob = isAlumni || isAdmin;
   const pageMeta = useMemo(() => getPageMeta(location.pathname), [location.pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle("sidebar-drawer-open", sidebarOpen);
+
+    return () => {
+      document.body.classList.remove("sidebar-drawer-open");
+    };
+  }, [sidebarOpen]);
 
   const handleLogout = async () => {
     await logout();

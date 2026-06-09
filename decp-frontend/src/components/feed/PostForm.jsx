@@ -39,6 +39,7 @@ const PostForm = ({
           value={content}
           onChange={(event) => setContent(event.target.value)}
           disabled={submitting}
+          placeholder="Share an update, question, or department opportunity..."
         />
       </label>
       {fieldError && <span className="field-error">{fieldError}</span>}

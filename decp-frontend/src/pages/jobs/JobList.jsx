@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { BriefcaseBusiness, PlusCircle, Search, SlidersHorizontal } from "lucide-react";
 
 import { getJobs, likeJob } from "../../api/jobApi";
+import { useAuth } from "../../auth/useAuth";
 import JobCard from "../../components/jobs/JobCard";
 import JobFilters from "../../components/jobs/JobFilters";
 import { DEFAULT_JOB_QUERY } from "../../constants/jobOptions";
@@ -57,7 +60,13 @@ const toggleJobLike = (job) => ({
   likedByCurrentUser: !job?.likedByCurrentUser,
 });
 
+const countActiveFilters = (filters) =>
+  Object.values(filters).filter((value) => value !== "" && value !== null && value !== undefined).length;
+
+const normalizeRole = (role) => role?.toUpperCase?.() ?? "";
+
 const JobList = () => {
+  const { user } = useAuth();
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
   const [pageNumber, setPageNumber] = useState(DEFAULT_JOB_QUERY.page);
@@ -142,17 +151,49 @@ const JobList = () => {
   const jobs = jobsPage?.content ?? [];
   const currentPage = jobsPage?.number ?? pageNumber;
   const totalPages = jobsPage?.totalPages;
+  const totalElements = Number.isInteger(jobsPage?.totalElements) ? jobsPage.totalElements : jobs.length;
+  const activeFilterCount = countActiveFilters(appliedFilters);
+  const normalizedRole = normalizeRole(user?.role);
+  const canCreateJob = ["ALUMNI", "ADMIN"].includes(normalizedRole);
   const isFirstPage = currentPage <= 0 || jobsPage?.first;
   const isLastPage =
     jobsPage?.last || (Number.isInteger(totalPages) && totalPages > 0 && currentPage >= totalPages - 1);
 
   return (
     <section className="jobs-page">
-      <div className="jobs-page__header">
+      <div className="jobs-hero">
         <div>
-          <h1>Jobs</h1>
-          <p>Browse open and closed opportunities shared through DECP.</p>
+          <p className="jobs-eyebrow">Career Hub</p>
+          <h1>Find opportunities shared through DECP.</h1>
+          <p>
+            Scan jobs and internships by role, location, work mode, and experience level, then save,
+            discuss, or apply from the detail page.
+          </p>
         </div>
+        {canCreateJob && (
+          <Link className="job-button job-button--primary" to="/jobs/create">
+            <PlusCircle size={17} aria-hidden="true" />
+            Post Opportunity
+          </Link>
+        )}
+      </div>
+
+      <div className="jobs-summary" aria-label="Career hub summary">
+        <article>
+          <BriefcaseBusiness size={20} aria-hidden="true" />
+          <span>Results</span>
+          <strong>{loading ? "..." : totalElements}</strong>
+        </article>
+        <article>
+          <SlidersHorizontal size={20} aria-hidden="true" />
+          <span>Active Filters</span>
+          <strong>{activeFilterCount}</strong>
+        </article>
+        <article>
+          <Search size={20} aria-hidden="true" />
+          <span>Current Page</span>
+          <strong>{currentPage + 1}</strong>
+        </article>
       </div>
 
       <JobFilters
@@ -171,11 +212,7 @@ const JobList = () => {
         <>
           <div className="jobs-list">
             {jobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onLike={handleLikeJob}
-              />
+              <JobCard key={job.id} job={job} onLike={handleLikeJob} />
             ))}
           </div>
 
@@ -203,8 +240,19 @@ const JobList = () => {
           </div>
         </>
       ) : (
-        <div className="jobs-state">
-          No jobs match the current filters. Try clearing filters or adjusting your search.
+        <div className="jobs-empty">
+          <h2>No matching opportunities</h2>
+          <p>Try clearing filters or broadening your search terms to see more career items.</p>
+          <div>
+            <button className="job-button job-button--secondary" type="button" onClick={handleClearFilters}>
+              Clear Filters
+            </button>
+            {canCreateJob && (
+              <Link className="job-button job-button--primary" to="/jobs/create">
+                Post Opportunity
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </section>

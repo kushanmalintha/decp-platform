@@ -65,10 +65,14 @@
   line-height: 1.2;
 }
 
-.sidebar-close,
-.sidebar-toggle,
+.sidebar .sidebar-close,
+.topbar .sidebar-toggle,
 .sidebar-backdrop {
   display: none;
+}
+
+body.sidebar-drawer-open {
+  overflow: hidden;
 }
 
 .sidebar-nav {
@@ -414,8 +418,8 @@
     transform: translateX(0);
   }
 
-  .sidebar-close,
-  .sidebar-toggle {
+  .sidebar .sidebar-close,
+  .topbar .sidebar-toggle {
     display: inline-grid;
   }
 
