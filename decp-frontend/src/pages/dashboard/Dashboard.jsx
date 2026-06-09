@@ -234,7 +234,7 @@ const Dashboard = () => {
         canPostOpportunity && { to: "/jobs/create", label: "Post Opportunity", icon: PlusCircle },
         isAlumni && { to: "/recruiter/dashboard", label: "Recruiter Dashboard", icon: BarChart3 },
         isAdmin && { to: "/admin/roles", label: "Role Management", icon: ShieldCheck },
-        { to: "/settings/change-password", label: "Account Settings", icon: Settings },
+        { to: "/settings/security", label: "Account Settings", icon: Settings },
       ].filter(Boolean),
     [canPostOpportunity, isAdmin, isAlumni, isStudent],
   );

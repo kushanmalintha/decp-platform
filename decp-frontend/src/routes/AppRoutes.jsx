@@ -4,7 +4,6 @@ import ProtectedRoute from "../auth/ProtectedRoute";
 import RoleRoute from "../auth/RoleRoute";
 import MainLayout from "../layouts/MainLayout";
 import RoleManagement from "../pages/admin/RoleManagement";
-import ChangePassword from "../pages/auth/ChangePassword";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -21,6 +20,7 @@ import SavedJobs from "../pages/jobs/SavedJobs";
 import Notifications from "../pages/notifications/Notifications";
 import EditProfile from "../pages/profile/EditProfile";
 import MyProfile from "../pages/profile/MyProfile";
+import Settings from "../pages/settings/Settings";
 
 const AppRoutes = () => (
   <Routes>
@@ -91,7 +91,10 @@ const AppRoutes = () => (
       />
       <Route path="/profile" element={<MyProfile />} />
       <Route path="/profile/edit" element={<EditProfile />} />
-      <Route path="/settings/change-password" element={<ChangePassword />} />
+      <Route path="/settings" element={<Navigate to="/settings/security" replace />} />
+      <Route path="/settings/account" element={<Settings />} />
+      <Route path="/settings/security" element={<Settings />} />
+      <Route path="/settings/change-password" element={<Navigate to="/settings/security" replace />} />
       <Route
         path="/admin/roles"
         element={

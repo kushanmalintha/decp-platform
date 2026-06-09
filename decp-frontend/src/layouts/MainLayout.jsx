@@ -207,7 +207,7 @@ const MainLayout = () => {
       label: "Account",
       items: [
         { to: "/profile", label: "Profile", icon: UserRound },
-        { to: "/settings/change-password", label: "Settings", icon: Settings },
+        { to: "/settings", label: "Settings", icon: Settings },
       ],
     },
   ].filter((section) => section.items.length > 0);
