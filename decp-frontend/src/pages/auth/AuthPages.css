@@ -45,3 +45,9 @@
 .auth-switch {
   text-align: center;
 }
+
+.field-help {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}

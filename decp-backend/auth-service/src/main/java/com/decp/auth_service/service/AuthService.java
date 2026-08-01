@@ -53,6 +53,11 @@ public class AuthService {
 
     @Transactional
     public void register(RegisterRequest request) {
+        String passwordValidationError = PasswordPolicy.validate(request.getPassword());
+        if (passwordValidationError != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, passwordValidationError);
+        }
+
         String name = request.getName() != null ? request.getName() : request.getEmail();
         
         User user = User.builder()
@@ -131,6 +136,11 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password is required");
         }
 
+        String passwordValidationError = PasswordPolicy.validate(request.getNewPassword());
+        if (passwordValidationError != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, passwordValidationError);
+        }
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -191,6 +201,11 @@ public class AuthService {
         }
         if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password is required");
+        }
+
+        String passwordValidationError = PasswordPolicy.validate(request.getNewPassword());
+        if (passwordValidationError != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, passwordValidationError);
         }
 
         PasswordResetToken resetToken = passwordResetTokenRepository

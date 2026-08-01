@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { register as registerRequest } from "../../api/authApi";
 import "./AuthPages.css";
 
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 const Register = () => {
   const [serverError, setServerError] = useState("");
   const navigate = useNavigate();
@@ -71,7 +73,12 @@ const Register = () => {
           <input
             type="password"
             autoComplete="new-password"
-            {...register("password", { required: "Password is required" })}
+            {...register("password", {
+              required: "Password is required",
+              validate: (value) =>
+                passwordPattern.test(value) ||
+                "Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.",
+            })}
           />
           {errors.password && <span className="field-error">{errors.password.message}</span>}
         </label>
